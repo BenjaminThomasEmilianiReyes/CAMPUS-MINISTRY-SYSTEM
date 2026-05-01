@@ -18,39 +18,41 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/student', require('./routes/student'));
 app.use('/api/evaluation', require('./routes/evaluation'));
 
-// Seed test users on startup
+// Keep demo credentials usable even if older bad hashes already exist.
 const seedUsers = async () => {
   try {
-    const adminExists = await User.findOne({ email: 'dfabela@xu.edu.ph' });
-    if (!adminExists) {
-      const adminHash = await bcrypt.hash('admin123', 12);
-      await User.create({
+    const adminHash = await bcrypt.hash('admin123', 12);
+    await User.findOneAndUpdate(
+      { email: 'dfabela@xu.edu.ph' },
+      {
         email: 'dfabela@xu.edu.ph',
         password: adminHash,
         role: 'admin',
         fullName: 'Dean Fabela',
         studentId: 'ADMIN001'
-      });
-      console.log('✅ Admin user created: dfabela@xu.edu.ph');
-    }
-    
-    const studentExists = await User.findOne({ studentId: '20230028369' });
-    if (!studentExists) {
-      const studentHash = await bcrypt.hash('password123', 12);
-      await User.create({
+      },
+      { upsert: true, new: true }
+    );
+    console.log('Test admin ready: dfabela@xu.edu.ph');
+
+    const studentHash = await bcrypt.hash('password123', 12);
+    await User.findOneAndUpdate(
+      { studentId: '20230028369' },
+      {
         email: '20230028369@my.xu.edu.ph',
         password: studentHash,
         role: 'student',
         fullName: 'John Doe',
         studentId: '20230028369',
         batch: 'BSIT-1A'
-      });
-      console.log('✅ Student user created: 20230028369@my.xu.edu.ph');
-    }
-    
-    console.log('ℹ️ Test users ready');
+      },
+      { upsert: true, new: true }
+    );
+    console.log('Test student ready: 20230028369@my.xu.edu.ph');
+
+    console.log('Test users ready');
   } catch (error) {
-    console.log('ℹ️ Users may already exist');
+    console.log('Could not seed test users:', error.message);
   }
 };
 

@@ -43,10 +43,10 @@ const handleSubmit = async (e) => {
       console.log('User role:', role);
       toast.success('Welcome to eCMS!');
       
-      // Navigate directly based on role from response
+// Navigate directly based on role from response
       const targetPath = role === 'student' ? '/student/dashboard' : '/admin/dashboard';
       console.log('Navigating to:', targetPath);
-      window.location.href = targetPath;
+      navigate(targetPath);
 } catch (error) {
       console.error('Login error full:', error);
       console.error('Login error response:', error.response);

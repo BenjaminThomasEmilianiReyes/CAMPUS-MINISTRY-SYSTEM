@@ -23,15 +23,12 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
     // Create new user
     const newUser = new User({
       fullName,
       email,
       studentId: studentId || `ADMIN${Date.now()}`,
-      password: hashedPassword,
+      password,
       role: role || 'student',
       batch: batch || ''
     });
@@ -126,20 +123,23 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     
     // Auto-create test users if they don't exist (for demo purposes)
-    const testUser = await User.findOne({ email });
-    if (!testUser) {
-      // Check if it's a test account - create it on the fly
+    let user = await User.findOne({ email });
+    
+    // If user doesn't exist, check if it's a test account.
+    if (!user) {
+      // Check if it's a test account and create it with the documented password.
       if (email === '20230028369@my.xu.edu.ph' || email === 'dfabela@xu.edu.ph') {
-        const hashedPassword = await bcrypt.hash('password123', 12);
-        await User.findOneAndUpdate(
+        const isAdminTestUser = email === 'dfabela@xu.edu.ph';
+        const hashedPassword = await bcrypt.hash(isAdminTestUser ? 'admin123' : 'password123', 12);
+        user = await User.findOneAndUpdate(
           { email },
           {
             email,
             password: hashedPassword,
-            role: email.includes('xu.edu.ph') ? 'admin' : 'student',
-            fullName: email.includes('dfabela') ? 'Dean Fabela' : 'Test User',
-            studentId: email.includes('dfabela') ? 'ADMIN001' : '20230028369',
-            batch: 'BSIT-1A'
+            role: isAdminTestUser ? 'admin' : 'student',
+            fullName: isAdminTestUser ? 'Dean Fabela' : 'John Doe',
+            studentId: isAdminTestUser ? 'ADMIN001' : '20230028369',
+            batch: isAdminTestUser ? '' : 'BSIT-1A'
           },
           { upsert: true, new: true }
         );
@@ -148,9 +148,9 @@ router.post('/login', async (req, res) => {
       }
     }
     
-    const user = await User.findOne({ email });
-    
-    if (!user || !(await user.comparePassword(password))) {
+    // Verify password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
