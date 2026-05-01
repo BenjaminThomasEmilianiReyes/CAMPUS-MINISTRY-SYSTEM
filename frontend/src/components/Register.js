@@ -131,47 +131,84 @@ const Register = () => {
               />
             </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="your.email@xavier.edu.ph"
-              />
-            </div>
+{formData.role === 'admin' && (
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Admin Email</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., dfabela@xu.edu.ph"
+                />
+                <p className="text-xs text-gray-500 mt-1">Use @xu.edu.ph for admin accounts</p>
+              </div>
+            )}
 
-            {formData.role === 'student' && (
+{formData.role === 'student' && (
               <>
                 <div>
-                  <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">Student ID</label>
+                  <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">Student ID Number</label>
                   <input
                     id="studentId"
                     name="studentId"
                     type="text"
                     required
                     value={formData.studentId}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const studentId = e.target.value;
+                      setFormData({ 
+                        ...formData, 
+                        studentId: studentId,
+                        // Auto-generate email: 20230028369@my.xu.edu.ph
+                        email: studentId ? `${studentId}@my.xu.edu.ph` : ''
+                      });
+                    }}
                     className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 2023001"
+placeholder="e.g., 20230028369 (11 digits)"
                   />
+<p className="text-xs text-gray-500 mt-1">Enter your student ID number (11 digits)</p>
                 </div>
 
                 <div>
-                  <label htmlFor="batch" className="block text-sm font-medium text-gray-700">Batch/Class</label>
-                  <input
+                  <label htmlFor="batch" className="block text-sm font-medium text-gray-700">Course & Year</label>
+                  <select
                     id="batch"
                     name="batch"
-                    type="text"
                     value={formData.batch}
                     onChange={handleChange}
+                    required
                     className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., BSIT-1A"
-                  />
+                  >
+                    <option value="">Select Course & Year</option>
+                    <optgroup label="BSIT - Bachelor of Science in IT">
+                      <option value="BSIT-1">BSIT - 1st Year</option>
+                      <option value="BSIT-2">BSIT - 2nd Year</option>
+                      <option value="BSIT-3">BSIT - 3rd Year</option>
+                      <option value="BSIT-4">BSIT - 4th Year</option>
+                    </optgroup>
+                    <optgroup label="BSCS - Bachelor of Science in Computer Science">
+                      <option value="BSCS-1">BSCS - 1st Year</option>
+                      <option value="BSCS-2">BSCS - 2nd Year</option>
+                      <option value="BSCS-3">BSCS - 3rd Year</option>
+                      <option value="BSCS-4">BSCS - 4th Year</option>
+                    </optgroup>
+                    <optgroup label="BSIS - Bachelor of Science in Information Systems">
+                      <option value="BSIS-1">BSIS - 1st Year</option>
+                      <option value="BSIS-2">BSIS - 2nd Year</option>
+                      <option value="BSIS-3">BSIS - 3rd Year</option>
+                      <option value="BSIS-4">BSIS - 4th Year</option>
+                    </optgroup>
+                    <optgroup label="ABCom - AB Communication">
+                      <option value="ABCom-1">ABCom - 1st Year</option>
+                      <option value="ABCom-2">ABCom - 2nd Year</option>
+                      <option value="ABCom-3">ABCom - 3rd Year</option>
+                      <option value="ABCom-4">ABCom - 4th Year</option>
+                    </optgroup>
+                  </select>
                 </div>
               </>
             )}
@@ -241,10 +278,10 @@ const Register = () => {
             )}
           </button>
 
-          <div className="text-center">
+<div className="text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link to="/login" className="font-medium text-primary hover:underline">
                 Sign in
               </Link>
             </p>

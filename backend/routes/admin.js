@@ -40,12 +40,22 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
       };
     });
 
+    const batch = req.body.batch || 'General';
+    let assignedStudents = req.body.assignedStudents || [];
+    
+    // Auto-assign students based on batch if no specific students selected
+    if (assignedStudents.length === 0 && batch && batch !== 'General') {
+      const batchStudents = await User.find({ role: 'student', batch: batch }).select('_id');
+      assignedStudents = batchStudents.map(s => s._id);
+      console.log(`🎯 Auto-assigning ${assignedStudents.length} students from batch: ${batch}`);
+    }
+
     const evaluationData = {
       title: req.body.title,
       description: req.body.description || '',
       questions: cleanQuestions,
-      assignedStudents: req.body.assignedStudents || [],
-      batch: req.body.batch || 'General',
+      assignedStudents: assignedStudents,
+      batch: batch,
       dueDate: new Date(req.body.dueDate),
       createdBy: req.user.id
     };
@@ -58,12 +68,12 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
     console.log(`🎉 Evaluation created: ${evaluation._id}`);
 
     // Assign to students
-    if (evaluationData.assignedStudents && evaluationData.assignedStudents.length > 0) {
+    if (assignedStudents && assignedStudents.length > 0) {
       await User.updateMany(
-        { _id: { $in: evaluationData.assignedStudents } },
+        { _id: { $in: assignedStudents } },
         { $addToSet: { assignedEvaluations: evaluation._id } }
       );
-      console.log(`👥 Assigned to ${evaluationData.assignedStudents.length} students`);
+      console.log(`👥 Assigned to ${assignedStudents.length} students`);
     }
 
     const populatedEval = await Evaluation.findById(evaluation._id)
