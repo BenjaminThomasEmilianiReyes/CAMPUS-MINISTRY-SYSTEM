@@ -4,6 +4,56 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const router = express.Router();
 
+// Register new user (student or admin)
+router.post('/register', async (req, res) => {
+  try {
+    const { fullName, email, studentId, password, role, batch } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+
+    // Check if studentId already exists (for students)
+    if (studentId) {
+      const existingStudentId = await User.findOne({ studentId });
+      if (existingStudentId) {
+        return res.status(400).json({ message: 'Student ID already registered' });
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create new user
+    const newUser = new User({
+      fullName,
+      email,
+      studentId: studentId || `ADMIN${Date.now()}`,
+      password: hashedPassword,
+      role: role || 'student',
+      batch: batch || ''
+    });
+
+    await newUser.save();
+
+    res.status(201).json({ 
+      message: 'Registration successful',
+      user: {
+        id: newUser._id,
+        email: newUser.email,
+        role: newUser.role,
+        fullName: newUser.fullName,
+        studentId: newUser.studentId
+      }
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;

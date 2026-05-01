@@ -96,6 +96,31 @@ router.get('/evaluations', [auth, adminAuth], async (req, res) => {
   }
 });
 
+// Delete evaluation
+router.delete('/evaluations/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    const evaluation = await Evaluation.findById(req.params.id);
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Evaluation not found' });
+    }
+
+    // Remove evaluation from all students' assignedEvaluations
+    await User.updateMany(
+      { assignedEvaluations: req.params.id },
+      { $pull: { assignedEvaluations: req.params.id } }
+    );
+
+    // Delete the evaluation
+    await Evaluation.findByIdAndDelete(req.params.id);
+
+    console.log(`🗑️ Evaluation deleted: ${req.params.id}`);
+    res.json({ message: 'Evaluation deleted successfully' });
+  } catch (error) {
+    console.error('Delete evaluation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Generate certificate
 router.post('/certificates', [auth, adminAuth], async (req, res) => {
   try {
@@ -171,6 +196,33 @@ router.get('/students', [auth, adminAuth], async (req, res) => {
     res.json(students);
   } catch (error) {
     console.error('Students error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all users
+router.get('/users', [auth, adminAuth], async (req, res) => {
+  try {
+    const users = await User.find()
+      .select('fullName email role batch createdAt')
+      .sort({ createdAt: -1 });
+    res.json(users);
+  } catch (error) {
+    console.error('Users error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get certificates
+router.get('/certificates', [auth, adminAuth], async (req, res) => {
+  try {
+    const certificates = await Certificate.find()
+      .populate('student', 'fullName studentId')
+      .populate('issuedBy', 'fullName')
+      .sort({ createdAt: -1 });
+    res.json(certificates);
+  } catch (error) {
+    console.error('Certificates error:', error);
     res.status(500).json({ message: error.message });
   }
 });
