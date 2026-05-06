@@ -5,11 +5,13 @@ import { AuthContext } from './context/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
 import StudentDashboard from './components/StudentDashboard';
+import StudentProfile from './components/StudentProfile';
 import AdminDashboard from './components/AdminDashboard';
 import EvaluationForm from './components/EvaluationForm';
 import EvaluationBuilder from './components/EvaluationBuilder';
 import DataManagement from './components/DataManagement';
 import CertificateGenerator from './components/CertificateGenerator';
+import RecollectionRegistrants from './components/RecollectionRegistrants';
 import ProtectedRoute from './components/ProtectedRoute';
 import './index.css';
 
@@ -85,6 +87,9 @@ if (isAuthPage || !user) {
               {location.pathname !== '/student/dashboard' && (
                 <Link to="/student/dashboard" className="p-3 rounded-lg hover:bg-[#2e2e44]">Dashboard</Link>
               )}
+              {location.pathname !== '/student/profile' && (
+                <Link to="/student/profile" className="p-3 rounded-lg hover:bg-[#2e2e44]">Student Profile</Link>
+              )}
             </>
           )}
         </nav>
@@ -100,7 +105,13 @@ if (isAuthPage || !user) {
       <div className="ml-[260px] flex-1">
         {/* TOPBAR */}
         <header className="h-[70px] bg-white flex items-center justify-between px-6 shadow-sm">
-          <h1 className="text-lg font-semibold">{user.role === 'admin' ? 'Admin Dashboard' : 'Student Dashboard'}</h1>
+          <h1 className="text-lg font-semibold">
+            {user.role === 'admin'
+              ? 'Admin Dashboard'
+              : location.pathname === '/student/profile'
+                ? 'Student Profile'
+                : 'Student Dashboard'}
+          </h1>
           <div className="flex items-center gap-3">
             <span className="font-medium">{user.fullName}</span>
             <span className="text-gray-500 text-sm capitalize">({user.role})</span>
@@ -115,6 +126,14 @@ if (isAuthPage || !user) {
               element={
                 <ProtectedRoute role="student">
                   <StudentDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/profile" 
+              element={
+                <ProtectedRoute role="student">
+                  <StudentProfile />
                 </ProtectedRoute>
               } 
             />
@@ -148,6 +167,14 @@ if (isAuthPage || !user) {
               element={
                 <ProtectedRoute role="admin">
                   <CertificateGenerator />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/recollections/:id/registrants" 
+              element={
+                <ProtectedRoute role="admin">
+                  <RecollectionRegistrants />
                 </ProtectedRoute>
               } 
             />

@@ -12,10 +12,20 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     role: 'student',
+    department: 'Computer Studies',
     batch: ''
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const departments = [
+    'Nursing',
+    'Computer Studies',
+    'Engineering',
+    'Agriculture',
+    'Business Management',
+    'Education',
+    'Arts and Science'
+  ];
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -42,6 +52,7 @@ const Register = () => {
         studentId: formData.studentId,
         password: formData.password,
         role: formData.role,
+        department: formData.role === 'student' ? formData.department : '',
         batch: formData.batch
       });
       toast.success('Registration successful! Please login.');
@@ -171,6 +182,22 @@ const Register = () => {
 placeholder="e.g., 20230028369 (11 digits)"
                   />
 <p className="text-xs text-gray-500 mt-1">Enter your student ID number (11 digits)</p>
+                </div>
+
+                <div>
+                  <label htmlFor="department" className="block text-sm font-medium text-gray-700">Department</label>
+                  <select
+                    id="department"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    required
+                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {departments.map((department) => (
+                      <option key={department} value={department}>{department}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

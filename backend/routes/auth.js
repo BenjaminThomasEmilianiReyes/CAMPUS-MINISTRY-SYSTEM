@@ -7,6 +7,12 @@ const User = require('../models/User');
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const inferDepartmentFromBatch = (batch = '') => {
+  if (/^BSIT-|^BSCS-|^BSIS-/.test(batch)) return 'Computer Studies';
+  if (/^ABCom-/.test(batch)) return 'Arts and Science';
+  return '';
+};
+
 const createAuthResponse = (user) => {
   const token = jwt.sign(
     { id: user._id, role: user.role },
@@ -22,6 +28,7 @@ const createAuthResponse = (user) => {
       role: user.role,
       fullName: user.fullName,
       studentId: user.studentId,
+      department: user.department || inferDepartmentFromBatch(user.batch || ''),
       batch: user.batch || ''
     }
   };
@@ -37,7 +44,7 @@ router.get('/', (req, res) => {
 // Register new user (student or admin)
 router.post('/register', async (req, res) => {
   try {
-    const { fullName, email, studentId, password, role, batch } = req.body;
+    const { fullName, email, studentId, password, role, batch, department } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -60,6 +67,7 @@ router.post('/register', async (req, res) => {
       studentId: studentId || `ADMIN${Date.now()}`,
       password,
       role: role || 'student',
+      department: department || inferDepartmentFromBatch(batch || ''),
       batch: batch || ''
     });
 
@@ -72,7 +80,8 @@ router.post('/register', async (req, res) => {
         email: newUser.email,
         role: newUser.role,
         fullName: newUser.fullName,
-        studentId: newUser.studentId
+        studentId: newUser.studentId,
+        department: newUser.department || ''
       }
     });
   } catch (error) {
@@ -108,6 +117,7 @@ router.post('/autoseed', async (req, res) => {
         role: 'student',
         fullName: 'John Doe',
         studentId: '20230028369',
+        department: 'Computer Studies',
         batch: 'BSIT-1A'
       },
       { upsert: true, new: true }
@@ -122,6 +132,7 @@ router.post('/autoseed', async (req, res) => {
         role: 'student',
         fullName: 'Jane Smith',
         studentId: '20230028370',
+        department: 'Computer Studies',
         batch: 'BSIT-1B'
       },
       { upsert: true, new: true }
@@ -135,6 +146,7 @@ router.post('/autoseed', async (req, res) => {
         role: 'student',
         fullName: 'Bob Wilson',
         studentId: '20230028371',
+        department: 'Computer Studies',
         batch: 'BSIT-2A'
       },
       { upsert: true, new: true }
@@ -169,6 +181,7 @@ router.post('/login', async (req, res) => {
             role: isAdminTestUser ? 'admin' : 'student',
             fullName: isAdminTestUser ? 'Dean Fabela' : 'John Doe',
             studentId: isAdminTestUser ? 'ADMIN001' : '20230028369',
+            department: isAdminTestUser ? '' : 'Computer Studies',
             batch: isAdminTestUser ? '' : 'BSIT-1A'
           },
           { upsert: true, new: true }
@@ -232,6 +245,7 @@ router.post('/google', async (req, res) => {
         role: 'student',
         fullName: payload.name || email,
         studentId,
+        department: '',
         batch: ''
       });
     }
@@ -269,6 +283,7 @@ router.post('/seed', async (req, res) => {
         role: 'student',
         fullName: 'John Doe',
         studentId: '20230028369',
+        department: 'Computer Studies',
         batch: 'BSIT-1A'
       },
       { upsert: true, new: true }

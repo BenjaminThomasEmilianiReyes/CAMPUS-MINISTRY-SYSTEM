@@ -40,9 +40,18 @@ export const AuthProvider = ({ children }) => {
     delete api.defaults.headers.common['Authorization'];
   };
 
+  const updateUser = (updates) => {
+    setUser((currentUser) => {
+      const nextUser = { ...currentUser, ...updates };
+      localStorage.setItem('user', JSON.stringify(nextUser));
+      return nextUser;
+    });
+  };
+
   const value = {
     user,
     login,
+    updateUser,
     logout,
     loading
   };

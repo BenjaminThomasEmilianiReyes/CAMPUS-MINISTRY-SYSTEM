@@ -6,15 +6,19 @@ import api from '../services/api';
 const EvaluationBuilder = () => {
   const [questions, setQuestions] = useState([{ id: Date.now(), question: '', type: 'text', options: [], required: true }]);
   const [students, setStudents] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(true);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [batchFilter, setBatchFilter] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm();
 
   useEffect(() => {
     fetchStudents();
+    fetchTemplates();
   }, []);
 
   // Filter students by selected batch
@@ -31,6 +35,54 @@ const EvaluationBuilder = () => {
     } finally {
       setLoadingStudents(false);
     }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await api.get('/admin/evaluations');
+      setTemplates(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch evaluation templates:', error);
+      toast.error('Failed to load evaluation templates');
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const applyTemplate = (templateId) => {
+    setSelectedTemplateId(templateId);
+
+    if (!templateId) {
+      reset({
+        title: '',
+        description: '',
+        batch: '',
+        dueDate: ''
+      });
+      setQuestions([{ id: Date.now(), question: '', type: 'text', options: [], required: true }]);
+      setSelectedStudents([]);
+      return;
+    }
+
+    const template = templates.find((evaluation) => evaluation._id === templateId);
+    if (!template) return;
+
+    setValue('title', `${template.title} (Copy)`);
+    setValue('description', template.description || '');
+    setValue('batch', template.batch || '');
+    setValue('dueDate', '');
+
+    setQuestions(
+      (template.questions || []).map((question, index) => ({
+        id: Date.now() + index,
+        question: question.question || '',
+        type: question.type || 'text',
+        options: question.options || [],
+        required: question.required ?? true
+      }))
+    );
+    setSelectedStudents([]);
+    toast.success('Template loaded. Review the details before posting.');
   };
 
   const addQuestion = () => {
@@ -74,6 +126,7 @@ const EvaluationBuilder = () => {
       reset();
       setQuestions([{ id: Date.now(), question: '', type: 'text', options: [], required: true }]);
       setSelectedStudents([]);
+      setSelectedTemplateId('');
     } catch (error) {
       toast.error('Failed to create evaluation');
     } finally {
@@ -89,6 +142,33 @@ const EvaluationBuilder = () => {
         </h1>
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {/* Existing Template */}
+          <div className="p-8 bg-blue-50 border border-blue-100 rounded-2xl">
+            <label className="block text-lg font-semibold mb-3">Start from Existing Evaluation Template</label>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => applyTemplate(e.target.value)}
+              disabled={loadingTemplates || templates.length === 0}
+              className="w-full p-4 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:text-gray-500"
+            >
+              <option value="">
+                {loadingTemplates
+                  ? 'Loading templates...'
+                  : templates.length === 0
+                    ? 'No existing evaluations available'
+                    : 'Blank evaluation form'}
+              </option>
+              {templates.map((template) => (
+                <option key={template._id} value={template._id}>
+                  {template.title} - {template.batch} ({template.questions?.length || 0} questions)
+                </option>
+              ))}
+            </select>
+            <p className="mt-3 text-sm text-blue-700">
+              Choosing a template copies the title, description, course, and questions. Due date and assigned students are selected fresh.
+            </p>
+          </div>
+
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-gray-50 rounded-2xl">
             <div>
@@ -199,7 +279,7 @@ const EvaluationBuilder = () => {
                       <option value="rating">Rating (1-5)</option>
                     </select>
 
-                    {question.type === 'radio' && (
+                    {(question.type === 'radio' || question.type === 'checkbox') && (
                       <input
                         value={question.options.join(', ')}
                         onChange={(e) => updateOptions(question.id, e.target.value)}

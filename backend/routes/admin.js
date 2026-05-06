@@ -3,8 +3,18 @@ const jwt = require('jsonwebtoken');
 const Evaluation = require('../models/Evaluation');
 const User = require('../models/User');
 const Certificate = require('../models/Certificate');
+const Recollection = require('../models/Recollection');
 const QRCode = require('qrcode');
 const router = express.Router();
+const departments = [
+  'Nursing',
+  'Computer Studies',
+  'Engineering',
+  'Agriculture',
+  'Business Management',
+  'Education',
+  'Arts and Science'
+];
 
 const auth = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -127,6 +137,89 @@ router.delete('/evaluations/:id', [auth, adminAuth], async (req, res) => {
     res.json({ message: 'Evaluation deleted successfully' });
   } catch (error) {
     console.error('Delete evaluation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get recollection schedules
+router.get('/recollections', [auth, adminAuth], async (req, res) => {
+  try {
+    const recollections = await Recollection.find()
+      .populate('participants', 'fullName studentId batch department')
+      .sort({ date: 1 });
+
+    res.json(recollections);
+  } catch (error) {
+    console.error('Get recollections error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get one recollection schedule with registrants
+router.get('/recollections/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    const recollection = await Recollection.findById(req.params.id)
+      .populate('participants', 'fullName studentId email batch department')
+      .sort({ date: 1 });
+
+    if (!recollection) {
+      return res.status(404).json({ message: 'Recollection schedule not found' });
+    }
+
+    res.json(recollection);
+  } catch (error) {
+    console.error('Get recollection error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Create recollection schedule
+router.post('/recollections', [auth, adminAuth], async (req, res) => {
+  try {
+    if (!['1', '2', '3', '4'].includes(req.body.yearLevel)) {
+      return res.status(400).json({ message: 'Please select a valid year level' });
+    }
+
+    if (!departments.includes(req.body.department)) {
+      return res.status(400).json({ message: 'Please select a valid department' });
+    }
+
+    const recollection = new Recollection({
+      title: req.body.title,
+      description: req.body.description || '',
+      date: new Date(req.body.date),
+      venue: req.body.venue,
+      department: req.body.department,
+      yearLevel: req.body.yearLevel,
+      facilitator: req.body.facilitator || '',
+      slots: Number(req.body.slots) || 40
+    });
+
+    await recollection.save();
+    res.status(201).json(recollection);
+  } catch (error) {
+    console.error('Create recollection error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Delete recollection schedule
+router.delete('/recollections/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    const recollection = await Recollection.findById(req.params.id);
+    if (!recollection) {
+      return res.status(404).json({ message: 'Recollection schedule not found' });
+    }
+
+    await User.updateMany(
+      { registeredRecollections: req.params.id },
+      { $pull: { registeredRecollections: req.params.id } }
+    );
+    await Recollection.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Recollection schedule deleted successfully' });
+  } catch (error) {
+    console.error('Delete recollection error:', error);
     res.status(500).json({ message: error.message });
   }
 });

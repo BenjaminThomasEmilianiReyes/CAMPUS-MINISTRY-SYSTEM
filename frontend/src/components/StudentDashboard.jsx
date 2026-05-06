@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -7,12 +8,20 @@ import EvaluationCard from './EvaluationCard';
 const StudentDashboard = () => {
   const { user } = useContext(AuthContext);
   const [dashboardData, setDashboardData] = useState({
+    profile: null,
     announcements: [],
     pendingEvaluations: [],
     availableEvaluations: [],
+    recollectionSchedules: [],
     certificates: []
   });
   const [loading, setLoading] = useState(true);
+  const yearLevelLabels = {
+    1: '1st Year',
+    2: '2nd Year',
+    3: '3rd Year',
+    4: '4th Year'
+  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -47,6 +56,16 @@ const StudentDashboard = () => {
     }
   };
 
+  const handleParticipate = async (recollectionId) => {
+    try {
+      await api.post(`/student/recollections/${recollectionId}/participate`);
+      toast.success('Successfully registered for recollection!');
+      fetchDashboardData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to register for recollection');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -54,6 +73,9 @@ const StudentDashboard = () => {
       </div>
     );
   }
+
+  const profile = dashboardData.profile || {};
+  const profileComplete = Boolean(profile.profileComplete);
 
   return (
     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -67,8 +89,133 @@ const StudentDashboard = () => {
         </p>
       </div>
 
+      {!profileComplete && (
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-12 text-center border border-yellow-300">
+          <svg className="mx-auto h-14 w-14 text-yellow-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m0 3.75h.008v.008H12V16.5zm8.485 3.985H3.515a1.5 1.5 0 01-1.299-2.25l8.485-14.7a1.5 1.5 0 012.598 0l8.485 14.7a1.5 1.5 0 01-1.299 2.25z" />
+          </svg>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Complete your profile first</h2>
+          <p className="text-gray-600 mb-6">
+            Google sign-in confirms your school email, but your dashboard needs your department, course, and year level.
+          </p>
+          <Link
+            to="/student/profile"
+            className="inline-flex px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+          >
+            Edit Student Profile
+          </Link>
+        </div>
+      )}
+
+      {/* Recollection Schedules */}
+      {profileComplete && <div className="bg-white rounded-2xl shadow-xl p-8 mb-12">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">
+            Recollection Schedules
+            <span className="ml-2 bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full">
+              {dashboardData.recollectionSchedules?.length || 0}
+            </span>
+          </h2>
+          <p className="text-sm text-gray-500">Choose an available date and venue to participate.</p>
+        </div>
+
+        {!dashboardData.recollectionSchedules || dashboardData.recollectionSchedules.length === 0 ? (
+          <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl">
+            <svg className="mx-auto h-14 w-14 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p className="text-gray-500 text-lg">No recollection schedules available right now.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {dashboardData.recollectionSchedules.map((schedule) => {
+              const date = new Date(schedule.date);
+              const participantCount = schedule.participantCount || schedule.participants?.length || 0;
+              const slots = schedule.slots || 0;
+              const isFull = slots > 0 && participantCount >= slots;
+
+              return (
+                <div key={schedule._id} className="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-shadow bg-gradient-to-b from-white to-purple-50">
+                  <div className="mb-5">
+                    <h3 className="font-bold text-xl text-gray-900 mb-2">{schedule.title}</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">{schedule.description}</p>
+                  </div>
+
+                  <div className="space-y-3 text-sm text-gray-700 mb-6">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>
+                        {date.toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })} at {date.toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span>{schedule.venue}</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3" />
+                      </svg>
+                      <span>{schedule.department}</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422A12.083 12.083 0 0118 14.5c0 2.5-2.686 4.5-6 4.5s-6-2-6-4.5c0-1.338-.048-2.672-.16-3.922L12 14z" />
+                      </svg>
+                      <span>{yearLevelLabels[schedule.yearLevel] || 'Assigned year level'}</span>
+                    </div>
+                    {schedule.facilitator && (
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A8.966 8.966 0 0112 15c2.21 0 4.234.8 5.879 2.129M15 11a3 3 0 10-6 0 3 3 0 006 0z" />
+                        </svg>
+                        <span>{schedule.facilitator}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4 pt-5 border-t border-purple-100">
+                    <span className="text-sm font-medium text-gray-600">
+                      {slots > 0 ? `${Math.max(slots - participantCount, 0)} slots left` : 'Open slots'}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={schedule.isRegistered || isFull}
+                      onClick={() => handleParticipate(schedule._id)}
+                      className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                        schedule.isRegistered
+                          ? 'bg-green-100 text-green-700 cursor-not-allowed'
+                          : isFull
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-purple-600 text-white hover:bg-purple-700'
+                      }`}
+                    >
+                      {schedule.isRegistered ? 'Registered' : isFull ? 'Full' : 'Participate'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>}
+
       {/* Announcements & Pending Evaluations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+      {profileComplete && <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Announcements */}
         <div className="bg-white rounded-2xl shadow-xl p-8 lg:sticky lg:top-24 lg:h-fit">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
@@ -107,10 +254,10 @@ const StudentDashboard = () => {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Available Evaluations for Enrollment */}
-      {dashboardData.availableEvaluations && dashboardData.availableEvaluations.length > 0 && (
+      {profileComplete && dashboardData.availableEvaluations && dashboardData.availableEvaluations.length > 0 && (
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
             📋 Available Evaluations
@@ -143,7 +290,7 @@ const StudentDashboard = () => {
       )}
 
       {/* Certificates */}
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      {profileComplete && <div className="bg-white rounded-2xl shadow-xl p-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-8 flex items-center">
           🏆 Your Certificates
           <span className="ml-3 bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">
@@ -210,7 +357,7 @@ const StudentDashboard = () => {
             ))}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 };

@@ -12,16 +12,47 @@ const AdminDashboard = () => {
     totalSubmissions: 0
   });
   const [evaluations, setEvaluations] = useState([]);
+  const [recollections, setRecollections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [creatingRecollection, setCreatingRecollection] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ show: false, evaluationId: null });
+  const [recollectionForm, setRecollectionForm] = useState({
+    title: '',
+    description: '',
+    date: '',
+    venue: '',
+    department: 'Computer Studies',
+    yearLevel: '1',
+    facilitator: '',
+    slots: 40
+  });
+
+  const departments = [
+    'Nursing',
+    'Computer Studies',
+    'Engineering',
+    'Agriculture',
+    'Business Management',
+    'Education',
+    'Arts and Science'
+  ];
+
+  const yearLevelLabels = {
+    1: '1st Year',
+    2: '2nd Year',
+    3: '3rd Year',
+    4: '4th Year'
+  };
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const [evalsRes, statsRes] = await Promise.all([
+      const [evalsRes, statsRes, recollectionsRes] = await Promise.all([
         api.get('/admin/evaluations'),
-        api.get('/admin/stats')
+        api.get('/admin/stats'),
+        api.get('/admin/recollections')
       ]);
       setEvaluations(evalsRes.data);
+      setRecollections(recollectionsRes.data || []);
       setStats(statsRes.data || mockStats());
     } catch (error) {
       toast.error('Failed to load dashboard');
@@ -61,6 +92,49 @@ const AdminDashboard = () => {
 
   const confirmDelete = (id) => {
     setDeleteModal({ show: true, evaluationId: id });
+  };
+
+  const handleRecollectionChange = (event) => {
+    const { name, value } = event.target;
+    setRecollectionForm((current) => ({
+      ...current,
+      [name]: value
+    }));
+  };
+
+  const handleCreateRecollection = async (event) => {
+    event.preventDefault();
+    setCreatingRecollection(true);
+
+    try {
+      const response = await api.post('/admin/recollections', recollectionForm);
+      setRecollections((current) => [...current, response.data].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      setRecollectionForm({
+        title: '',
+        description: '',
+        date: '',
+        venue: '',
+        department: 'Computer Studies',
+        yearLevel: '1',
+        facilitator: '',
+        slots: 40
+      });
+      toast.success('Recollection schedule created');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to create recollection schedule');
+    } finally {
+      setCreatingRecollection(false);
+    }
+  };
+
+  const handleDeleteRecollection = async (id) => {
+    try {
+      await api.delete(`/admin/recollections/${id}`);
+      setRecollections((current) => current.filter((recollection) => recollection._id !== id));
+      toast.success('Recollection schedule deleted');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete recollection schedule');
+    }
   };
 
   if (loading) {
@@ -192,6 +266,171 @@ const AdminDashboard = () => {
             <h3 className="text-2xl font-bold mb-1">View Reports</h3>
             <p className="opacity-90">Download CSV reports</p>
           </div>
+        </div>
+      </div>
+
+      {/* Recollection Schedule Management */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-12">
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Recollection Schedule</h2>
+          <form onSubmit={handleCreateRecollection} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Title *</label>
+              <input
+                name="title"
+                required
+                value={recollectionForm.title}
+                onChange={handleRecollectionChange}
+                placeholder="e.g., First Year Recollection"
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Date and Time *</label>
+              <input
+                type="datetime-local"
+                name="date"
+                required
+                value={recollectionForm.date}
+                onChange={handleRecollectionChange}
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Venue *</label>
+              <input
+                name="venue"
+                required
+                value={recollectionForm.venue}
+                onChange={handleRecollectionChange}
+                placeholder="e.g., Xavier University Chapel"
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Department *</label>
+              <select
+                name="department"
+                required
+                value={recollectionForm.department}
+                onChange={handleRecollectionChange}
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+              >
+                {departments.map((department) => (
+                  <option key={department} value={department}>{department}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Assigned Year Level *</label>
+              <select
+                name="yearLevel"
+                required
+                value={recollectionForm.yearLevel}
+                onChange={handleRecollectionChange}
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Facilitator</label>
+                <input
+                  name="facilitator"
+                  value={recollectionForm.facilitator}
+                  onChange={handleRecollectionChange}
+                  placeholder="Campus Ministry Office"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Slots</label>
+                <input
+                  type="number"
+                  min="1"
+                  name="slots"
+                  value={recollectionForm.slots}
+                  onChange={handleRecollectionChange}
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+              <textarea
+                name="description"
+                rows={3}
+                value={recollectionForm.description}
+                onChange={handleRecollectionChange}
+                placeholder="Short description students will see"
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={creatingRecollection}
+              className="w-full px-5 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            >
+              {creatingRecollection ? 'Creating...' : 'Create Schedule'}
+            </button>
+          </form>
+        </div>
+
+        <div className="lg:col-span-3 bg-white rounded-2xl shadow-xl p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Upcoming Recollections</h2>
+            <span className="bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full">
+              {recollections.length}
+            </span>
+          </div>
+          {recollections.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500">
+              No recollection schedules created yet.
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[34rem] overflow-y-auto pr-1">
+              {recollections.map((recollection) => {
+                const participantCount = recollection.participants?.length || 0;
+                return (
+                  <div key={recollection._id} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="font-bold text-lg text-gray-900">{recollection.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{recollection.description}</p>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                          <span>📅 {new Date(recollection.date).toLocaleString()}</span>
+                          <span>📍 {recollection.venue}</span>
+                          <span>Department: {recollection.department || 'Not set'}</span>
+                          <span>Year Level: {yearLevelLabels[recollection.yearLevel] || 'Not set'}</span>
+                          <span>👥 {participantCount}/{recollection.slots || 0} participants</span>
+                          {recollection.facilitator && <span>Facilitator: {recollection.facilitator}</span>}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 md:justify-end">
+                        <Link
+                          to={`/admin/recollections/${recollection._id}/registrants`}
+                          className="px-4 py-2 text-sm font-semibold text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                        >
+                          Registrants
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRecollection(recollection._id)}
+                          className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

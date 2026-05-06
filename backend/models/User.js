@@ -8,8 +8,10 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['student', 'admin', 'staff'], required: true },
   fullName: { type: String, required: true },
   studentId: { type: String },
+  department: { type: String },
   batch: { type: String },
   assignedEvaluations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Evaluation' }],
+  registeredRecollections: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Recollection' }],
   certificates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Certificate' }]
 }, { timestamps: true });
 
