@@ -36,7 +36,7 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
       const { _id, id, ...cleanQuestion } = question;
       return {
         ...cleanQuestion,
-        required: cleanQuestion.required || true
+        required: cleanQuestion.required ?? true
       };
     });
 
@@ -192,6 +192,105 @@ router.get('/stats', [auth, adminAuth], async (req, res) => {
     });
   } catch (error) {
     console.error('Stats error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+const getSubmissionRows = async () => {
+  const evaluations = await Evaluation.find({ 'submissions.0': { $exists: true } })
+    .populate('submissions.student', 'fullName studentId email batch')
+    .sort({ updatedAt: -1 });
+
+  return evaluations.flatMap((evaluation) =>
+    evaluation.submissions.map((submission) => ({
+      _id: submission._id,
+      studentId: submission.student?._id,
+      studentName: submission.student?.fullName || 'Unknown student',
+      studentNumber: submission.student?.studentId || '',
+      studentEmail: submission.student?.email || '',
+      batch: submission.student?.batch || '',
+      evaluationId: evaluation._id,
+      evaluationTitle: evaluation.title,
+      submittedAt: submission.submittedAt,
+      answers: submission.answers || {}
+    }))
+  ).sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+};
+
+// Detailed analytics for the data management page
+router.get('/stats-detailed', [auth, adminAuth], async (req, res) => {
+  try {
+    const [totalEvaluations, totalStudents, totalCertificates, totalUsers, submissionRows] = await Promise.all([
+      Evaluation.countDocuments(),
+      User.countDocuments({ role: 'student' }),
+      Certificate.countDocuments(),
+      User.countDocuments(),
+      getSubmissionRows()
+    ]);
+
+    res.json({
+      totalEvaluations,
+      totalStudents,
+      totalCertificates,
+      totalUsers,
+      totalSubmissions: submissionRows.length
+    });
+  } catch (error) {
+    console.error('Detailed stats error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Recent evaluation submissions
+router.get('/submissions', [auth, adminAuth], async (req, res) => {
+  try {
+    const submissions = await getSubmissionRows();
+    res.json(submissions);
+  } catch (error) {
+    console.error('Submissions error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+const csvValue = (value) => {
+  if (value === null || value === undefined) return '';
+  const stringValue = value instanceof Date ? value.toISOString() : String(value);
+  return `"${stringValue.replace(/"/g, '""')}"`;
+};
+
+// Export submissions as CSV
+router.get('/export-csv', [auth, adminAuth], async (req, res) => {
+  try {
+    const submissions = await getSubmissionRows();
+    const header = [
+      'Student Name',
+      'Student ID',
+      'Email',
+      'Batch',
+      'Evaluation',
+      'Submitted At',
+      'Answers'
+    ];
+
+    const rows = submissions.map((submission) => [
+      submission.studentName,
+      submission.studentNumber,
+      submission.studentEmail,
+      submission.batch,
+      submission.evaluationTitle,
+      submission.submittedAt ? new Date(submission.submittedAt).toISOString() : '',
+      JSON.stringify(submission.answers)
+    ]);
+
+    const csv = [header, ...rows]
+      .map((row) => row.map(csvValue).join(','))
+      .join('\n');
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment(`ecms-report-${new Date().toISOString().slice(0, 10)}.csv`);
+    res.send(csv);
+  } catch (error) {
+    console.error('CSV export error:', error);
     res.status(500).json({ message: error.message });
   }
 });

@@ -59,7 +59,11 @@ router.post('/evaluations/:id/enroll', auth, async (req, res) => {
     }
 
     // Check if already enrolled
-    if (evaluation.assignedStudents.includes(req.user.id)) {
+    const alreadyEnrolled = evaluation.assignedStudents.some(
+      studentId => studentId.toString() === req.user.id
+    );
+
+    if (alreadyEnrolled) {
       return res.status(400).json({ message: 'Already enrolled in this evaluation' });
     }
 
@@ -82,8 +86,24 @@ router.post('/evaluations/:id/enroll', auth, async (req, res) => {
 router.post('/evaluations/:id/submit', auth, async (req, res) => {
   try {
     const evaluation = await Evaluation.findById(req.params.id);
-    if (!evaluation.assignedStudents.includes(req.user.id)) {
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Evaluation not found' });
+    }
+
+    const isAssigned = evaluation.assignedStudents.some(
+      studentId => studentId.toString() === req.user.id
+    );
+
+    if (!isAssigned) {
       return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const alreadySubmitted = evaluation.submissions.some(
+      submission => submission.student?.toString() === req.user.id
+    );
+
+    if (alreadySubmitted) {
+      return res.status(400).json({ message: 'Evaluation already submitted' });
     }
 
     evaluation.submissions.push({
