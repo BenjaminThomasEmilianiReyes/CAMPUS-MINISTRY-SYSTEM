@@ -79,7 +79,7 @@ const handleSubmit = async (e) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f4f6fb] items-center justify-center p-4">
+    <div className="flex min-h-screen bg-card-bg items-center justify-center p-4">
       <div className="bg-white p-6 rounded-xl shadow-md max-w-md w-full">
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">eCMS Portal</h2>

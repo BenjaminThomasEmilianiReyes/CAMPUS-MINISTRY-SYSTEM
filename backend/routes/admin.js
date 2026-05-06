@@ -391,10 +391,51 @@ router.get('/export-csv', [auth, adminAuth], async (req, res) => {
 // Students list
 router.get('/students', [auth, adminAuth], async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' })
-      .select('fullName studentId email batch')
+    const { batch, yearLevel, completionStatus } = req.query;
+    const query = { role: 'student' };
+
+    if (batch) {
+      query.batch = batch;
+    } else if (yearLevel) {
+      query.batch = { $regex: `-${yearLevel}` };
+    }
+
+    let students = await User.find(query)
+      .select('fullName studentId email batch department')
       .sort({ fullName: 1 })
-      .limit(50);
+      .limit(200)
+      .lean();
+
+    const studentIds = students.map((student) => student._id);
+    const submissionCounts = await Evaluation.aggregate([
+      { $unwind: '$submissions' },
+      { $match: { 'submissions.student': { $in: studentIds } } },
+      {
+        $group: {
+          _id: '$submissions.student',
+          completedEvaluations: { $sum: 1 },
+          latestSubmissionAt: { $max: '$submissions.submittedAt' }
+        }
+      }
+    ]);
+
+    const completionByStudent = new Map(
+      submissionCounts.map((submission) => [submission._id.toString(), submission])
+    );
+
+    students = students.map((student) => {
+      const completion = completionByStudent.get(student._id.toString());
+      return {
+        ...student,
+        completedEvaluations: completion?.completedEvaluations || 0,
+        latestSubmissionAt: completion?.latestSubmissionAt || null
+      };
+    });
+
+    if (completionStatus === 'completed') {
+      students = students.filter((student) => student.completedEvaluations > 0);
+    }
+
     res.json(students);
   } catch (error) {
     console.error('Students error:', error);

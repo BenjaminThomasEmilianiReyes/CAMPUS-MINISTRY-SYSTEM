@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary: #33457C;
+  --color-secondary: #5A6FAF;
+  --color-card-bg: #E5E7EB;
+  --color-text-dark: #1F2A44;
+  --color-text-light: #FFFFFF;
+  --color-accent: #D32F2F;
+  --color-accent-gold: #F4C430;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -9,16 +19,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-card-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--color-secondary);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: var(--color-primary);
 }
 
 body {
@@ -28,27 +38,33 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8fafc;
+  background-color: var(--color-card-bg);
+  color: var(--color-text-dark);
 }
 
 .gradient-bg {
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
 }
 
 .card-gradient {
-  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  background: linear-gradient(145deg, #ffffff 0%, var(--color-card-bg) 100%);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .btn-blue {
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   transition: all 0.3s ease;
 }
 
 .btn-blue:hover {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-primary) 100%);
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.4);
+  box-shadow: 0 10px 25px rgba(51, 69, 124, 0.35);
+}
+
+::selection {
+  background: var(--color-accent-gold);
+  color: var(--color-text-dark);
 }
 
 .line-clamp-2 {

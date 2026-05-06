@@ -12,6 +12,7 @@ import EvaluationBuilder from './components/EvaluationBuilder';
 import DataManagement from './components/DataManagement';
 import CertificateGenerator from './components/CertificateGenerator';
 import RecollectionRegistrants from './components/RecollectionRegistrants';
+import RecollectionScheduleManager from './components/RecollectionScheduleManager';
 import ProtectedRoute from './components/ProtectedRoute';
 import './index.css';
 
@@ -61,39 +62,42 @@ if (isAuthPage || !user) {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f4f6fb]">
+    <div className="flex min-h-screen bg-card-bg text-text-dark">
       {/* SIDEBAR */}
-      <aside className="w-[260px] bg-[#1f1f2e] text-white p-5 fixed h-full">
-        <h2 className="text-xl font-bold mb-8">CMS</h2>
+      <aside className="w-[260px] bg-primary text-text-light p-5 fixed h-full">
+        <h2 className="text-xl font-bold mb-8 text-accent-gold">CMS</h2>
         <nav className="flex flex-col gap-2">
           {user.role === 'admin' ? (
             <>
               {/* Only show links that are NOT the current page for admin */}
               {location.pathname !== '/admin/dashboard' && (
-                <Link to="/admin/dashboard" className="p-3 rounded-lg hover:bg-[#2e2e44]">Dashboard</Link>
+                <Link to="/admin/dashboard" className="p-3 rounded-lg hover:bg-secondary">Dashboard</Link>
               )}
               {location.pathname !== '/admin/evaluation-builder' && (
-                <Link to="/admin/evaluation-builder" className="p-3 rounded-lg hover:bg-[#2e2e44]">Create Evaluation</Link>
+                <Link to="/admin/evaluation-builder" className="p-3 rounded-lg hover:bg-secondary">Create Evaluation</Link>
               )}
               {location.pathname !== '/admin/data' && (
-                <Link to="/admin/data" className="p-3 rounded-lg hover:bg-[#2e2e44]">Data</Link>
+                <Link to="/admin/data" className="p-3 rounded-lg hover:bg-secondary">Data</Link>
               )}
               {location.pathname !== '/admin/certificates' && (
-                <Link to="/admin/certificates" className="p-3 rounded-lg hover:bg-[#2e2e44]">Certificates</Link>
+                <Link to="/admin/certificates" className="p-3 rounded-lg hover:bg-secondary">Certificates</Link>
+              )}
+              {location.pathname !== '/admin/recollections' && (
+                <Link to="/admin/recollections" className="p-3 rounded-lg hover:bg-secondary">Recollections</Link>
               )}
             </>
           ) : (
             <>
               {location.pathname !== '/student/dashboard' && (
-                <Link to="/student/dashboard" className="p-3 rounded-lg hover:bg-[#2e2e44]">Dashboard</Link>
+                <Link to="/student/dashboard" className="p-3 rounded-lg hover:bg-secondary">Dashboard</Link>
               )}
               {location.pathname !== '/student/profile' && (
-                <Link to="/student/profile" className="p-3 rounded-lg hover:bg-[#2e2e44]">Student Profile</Link>
+                <Link to="/student/profile" className="p-3 rounded-lg hover:bg-secondary">Student Profile</Link>
               )}
             </>
           )}
         </nav>
-<button onClick={handleLogout} className="mt-auto p-3 rounded-lg hover:bg-red-600 w-full text-left absolute bottom-5 flex items-center gap-2">
+<button onClick={handleLogout} className="mt-auto p-3 rounded-lg hover:bg-accent w-full text-left absolute bottom-5 flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
@@ -104,10 +108,18 @@ if (isAuthPage || !user) {
       {/* MAIN */}
       <div className="ml-[260px] flex-1">
         {/* TOPBAR */}
-        <header className="h-[70px] bg-white flex items-center justify-between px-6 shadow-sm">
+        <header className="h-[70px] bg-white flex items-center justify-between px-6 shadow-sm border-b border-card-bg">
           <h1 className="text-lg font-semibold">
             {user.role === 'admin'
-              ? 'Admin Dashboard'
+              ? location.pathname === '/admin/recollections'
+                ? 'Recollection Schedules'
+                : location.pathname === '/admin/certificates'
+                  ? 'Certificates'
+                  : location.pathname === '/admin/data'
+                    ? 'Data'
+                    : location.pathname === '/admin/evaluation-builder'
+                      ? 'Create Evaluation'
+                      : 'Admin Dashboard'
               : location.pathname === '/student/profile'
                 ? 'Student Profile'
                 : 'Student Dashboard'}
@@ -167,6 +179,14 @@ if (isAuthPage || !user) {
               element={
                 <ProtectedRoute role="admin">
                   <CertificateGenerator />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/recollections" 
+              element={
+                <ProtectedRoute role="admin">
+                  <RecollectionScheduleManager />
                 </ProtectedRoute>
               } 
             />
