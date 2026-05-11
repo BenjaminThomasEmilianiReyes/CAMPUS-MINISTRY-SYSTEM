@@ -14,6 +14,8 @@ import DataManagement from './components/DataManagement';
 import CertificateGenerator from './components/CertificateGenerator';
 import RecollectionRegistrants from './components/RecollectionRegistrants';
 import RecollectionScheduleManager from './components/RecollectionScheduleManager';
+import ManageAccounts from './components/ManageAccounts';
+import StudentRecords from './components/StudentRecords';
 import ProtectedRoute from './components/ProtectedRoute';
 import './index.css';
 
@@ -68,54 +70,69 @@ if (isAuthPage || !user) {
   }
 
   return (
-    <div className="flex min-h-screen bg-card-bg text-text-dark">
+    <div className="flex min-h-screen bg-[#edf0f7] text-text-dark">
       {/* SIDEBAR */}
-      <aside className="w-[260px] bg-primary text-text-light p-5 fixed h-full">
-        <h2 className="text-xl font-bold mb-8 text-accent-gold">CMS</h2>
-        <nav className="flex flex-col gap-2">
+      <aside className="fixed h-full w-[260px] bg-[#3a53a5] p-4 text-white">
+        <div className="mb-8 flex items-center gap-3 px-2">
+          <img className="h-12 w-12 object-contain" src="/assets/CMO_Seal.png" alt="CMO Seal" />
+          <div>
+            <h2 className="text-xl font-bold">CMS</h2>
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Campus Ministry</p>
+          </div>
+        </div>
+        <nav className="flex flex-col gap-1">
           {user.role === 'admin' ? (
             <>
               {/* Only show links that are NOT the current page for admin */}
               {location.pathname !== '/admin/dashboard' && (
-                <Link to="/admin/dashboard" className="p-3 rounded-lg hover:bg-secondary">Dashboard</Link>
+                <Link to="/admin/dashboard" className="p-3 hover:bg-[#2a3a85]">Dashboard</Link>
               )}
               {location.pathname !== '/admin/evaluation-builder' && (
-                <Link to="/admin/evaluation-builder" className="p-3 rounded-lg hover:bg-secondary">Create Evaluation</Link>
+                <Link to="/admin/evaluation-builder" className="p-3 hover:bg-[#2a3a85]">Create Evaluation</Link>
               )}
               {location.pathname !== '/admin/data' && (
-                <Link to="/admin/data" className="p-3 rounded-lg hover:bg-secondary">Data</Link>
+                <Link to="/admin/data" className="p-3 hover:bg-[#2a3a85]">Data</Link>
+              )}
+              {location.pathname !== '/admin/accounts' && (
+                <Link to="/admin/accounts" className="p-3 hover:bg-[#2a3a85]">Manage Accounts</Link>
+              )}
+              {location.pathname !== '/admin/student-records' && (
+                <Link to="/admin/student-records" className="p-3 hover:bg-[#2a3a85]">Student Records</Link>
               )}
               {location.pathname !== '/admin/certificates' && (
-                <Link to="/admin/certificates" className="p-3 rounded-lg hover:bg-secondary">Certificates</Link>
+                <Link to="/admin/certificates" className="p-3 hover:bg-[#2a3a85]">Certificates</Link>
               )}
               {location.pathname !== '/admin/recollections' && (
-                <Link to="/admin/recollections" className="p-3 rounded-lg hover:bg-secondary">Recollections</Link>
+                <Link to="/admin/recollections" className="p-3 hover:bg-[#2a3a85]">Recollections</Link>
               )}
             </>
           ) : user.role === 'staff' ? (
             <>
               {location.pathname !== '/faculty/dashboard' && (
-                <Link to="/faculty/dashboard" className="p-3 rounded-lg hover:bg-secondary">Dashboard</Link>
+                <Link to="/faculty/dashboard" className="p-3 hover:bg-[#2a3a85]">Dashboard</Link>
               )}
               {location.pathname !== '/admin/evaluation-builder' && (
-                <Link to="/admin/evaluation-builder" className="p-3 rounded-lg hover:bg-secondary">Create Evaluation</Link>
+                <Link to="/admin/evaluation-builder" className="p-3 hover:bg-[#2a3a85]">Create Evaluation</Link>
               )}
               {location.pathname !== '/admin/recollections' && (
-                <Link to="/admin/recollections" className="p-3 rounded-lg hover:bg-secondary">Recollections</Link>
+                <Link to="/admin/recollections" className="p-3 hover:bg-[#2a3a85]">Recollections</Link>
+              )}
+              {location.pathname !== '/admin/student-records' && (
+                <Link to="/admin/student-records" className="p-3 hover:bg-[#2a3a85]">Student Records</Link>
               )}
             </>
           ) : (
             <>
               {location.pathname !== '/student/dashboard' && (
-                <Link to="/student/dashboard" className="p-3 rounded-lg hover:bg-secondary">Dashboard</Link>
+                <Link to="/student/dashboard" className="p-3 hover:bg-[#2a3a85]">Dashboard</Link>
               )}
               {location.pathname !== '/student/profile' && (
-                <Link to="/student/profile" className="p-3 rounded-lg hover:bg-secondary">Student Profile</Link>
+                <Link to="/student/profile" className="p-3 hover:bg-[#2a3a85]">Student Profile</Link>
               )}
             </>
           )}
         </nav>
-<button onClick={handleLogout} className="mt-auto p-3 rounded-lg hover:bg-accent w-full text-left absolute bottom-5 flex items-center gap-2">
+<button onClick={handleLogout} className="absolute bottom-5 flex w-[228px] items-center gap-2 p-3 text-left hover:bg-[#2a3a85]">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
@@ -126,8 +143,8 @@ if (isAuthPage || !user) {
       {/* MAIN */}
       <div className="ml-[260px] flex-1">
         {/* TOPBAR */}
-        <header className="h-[70px] bg-white flex items-center justify-between px-6 shadow-sm border-b border-card-bg">
-          <h1 className="text-lg font-semibold">
+        <header className="flex h-[70px] items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-[#3a53a5]">
             {user.role === 'admin'
               ? location.pathname === '/admin/recollections'
                 ? 'Recollection Schedules'
@@ -135,11 +152,17 @@ if (isAuthPage || !user) {
                   ? 'Certificates'
                   : location.pathname === '/admin/data'
                     ? 'Data'
-                    : location.pathname === '/admin/evaluation-builder'
-                      ? 'Create Evaluation'
-                      : 'Admin Dashboard'
+                    : location.pathname === '/admin/accounts'
+                      ? 'Manage Accounts'
+                      : location.pathname === '/admin/student-records'
+                        ? 'Student Records'
+                        : location.pathname === '/admin/evaluation-builder'
+                          ? 'Create Evaluation'
+                          : 'Admin Dashboard'
               : user.role === 'staff'
-                ? location.pathname === '/admin/recollections'
+                ? location.pathname === '/admin/student-records'
+                  ? 'Student Records'
+                  : location.pathname === '/admin/recollections'
                   ? 'Recollection Schedules'
                   : location.pathname === '/admin/evaluation-builder'
                     ? 'Create Evaluation'
@@ -150,7 +173,7 @@ if (isAuthPage || !user) {
           </h1>
           <div className="flex items-center gap-3">
             <span className="font-medium">{user.fullName}</span>
-            <span className="text-gray-500 text-sm capitalize">({user.role})</span>
+            <span className="text-sm capitalize text-gray-500">({user.role})</span>
           </div>
         </header>
 
@@ -203,6 +226,22 @@ if (isAuthPage || !user) {
               element={
                 <ProtectedRoute role="admin">
                   <DataManagement />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/accounts" 
+              element={
+                <ProtectedRoute role="admin">
+                  <ManageAccounts />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/student-records" 
+              element={
+                <ProtectedRoute role={['admin', 'staff']}>
+                  <StudentRecords />
                 </ProtectedRoute>
               } 
             />

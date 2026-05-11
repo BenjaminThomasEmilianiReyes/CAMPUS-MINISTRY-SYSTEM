@@ -83,92 +83,105 @@ const handleSubmit = async (e) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-card-bg items-center justify-center p-4">
-      <div className="bg-white p-6 rounded-xl shadow-md max-w-md w-full">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">eCMS Portal</h2>
-          <p className="text-gray-500">Electronic Certificate Management System</p>
-        </div>
-        
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              School Email
-            </label>
-            <input
-              type="email"
-              required
-              className="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-primary outline-none"
-placeholder="20230028369@my.xu.edu.ph"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-            />
+    <div className="min-h-screen bg-blue-950 md:flex">
+      <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-4 py-10 md:w-1/2">
+        <img
+          className="absolute inset-0 h-full w-full object-cover"
+          src="/assets/Login_Background.jpg"
+          alt=""
+        />
+        <div className="absolute inset-0 bg-blue-950/20" />
+
+        <div className="relative z-10 w-full max-w-lg rounded-lg border-2 border-blue-950 bg-white p-7 text-center shadow-2xl sm:p-9">
+          <img className="mx-auto h-24 w-full object-contain pb-2" src="/assets/CMO_Seal.png" alt="CMO Seal" />
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-900">Campus Ministry</p>
+          <h1 className="pb-5 pt-1 text-xl font-semibold text-blue-950">SIGN IN</h1>
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="mx-auto w-full text-left sm:w-3/4">
+              <label className="mb-1 block text-sm font-medium text-blue-950">
+                School Email
+              </label>
+              <input
+                type="email"
+                required
+                className="h-11 w-full bg-sky-100 px-3 text-blue-950 outline-none ring-1 ring-transparent transition focus:bg-white focus:ring-2 focus:ring-blue-900"
+                placeholder="20230028369@my.xu.edu.ph"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+              />
+            </div>
+
+            <div className="mx-auto w-full text-left sm:w-3/4">
+              <label className="mb-1 block text-sm font-medium text-blue-950">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                className="h-11 w-full bg-sky-100 px-3 text-blue-950 outline-none ring-1 ring-transparent transition focus:bg-white focus:ring-2 focus:ring-blue-900"
+                placeholder="Password"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="mx-auto flex h-12 w-full items-center justify-center rounded-lg bg-blue-900 px-4 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-60 sm:w-1/2"
+            >
+              {loading ? 'Signing in...' : 'Log In'}
+            </button>
+          </form>
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-blue-100" />
+            <span className="text-xs font-semibold uppercase text-blue-900">or</span>
+            <div className="h-px flex-1 bg-blue-100" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              className="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-primary outline-none"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-            />
+
+          <div className="mx-auto w-full sm:w-3/4">
+            {googleConfigured ? (
+              <div className={googleLoading ? 'pointer-events-none opacity-70' : ''}>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error('Google login failed')}
+                  text="signin_with"
+                  shape="rectangular"
+                  size="large"
+                  width="100%"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="w-full rounded-lg border border-blue-100 bg-sky-50 p-3 text-sm font-medium text-blue-900/45"
+              >
+                Google login needs a client ID
+              </button>
+            )}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary text-white p-3 rounded-lg hover:opacity-90 transition"
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span className="text-xs font-medium uppercase text-gray-400">or</span>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
-
-        {googleConfigured ? (
-          <div className={googleLoading ? 'pointer-events-none opacity-70' : ''}>
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => toast.error('Google login failed')}
-              text="signin_with"
-              shape="rectangular"
-              size="large"
-              width="100%"
-            />
+          <div className="mx-auto mt-5 w-full border-t border-blue-100 pt-4 text-center sm:w-3/4">
+            <p className="text-sm font-semibold text-blue-950">Test Accounts</p>
+            <p className="mt-1 text-xs text-gray-500">Student: 20230028369@my.xu.edu.ph / password123</p>
+            <p className="text-xs text-gray-500">Faculty: faculty@xu.edu.ph / password123</p>
+            <p className="text-xs text-gray-500">Admin: dfabela@xu.edu.ph / admin123</p>
           </div>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm font-medium text-gray-400"
-          >
-            Google login needs a client ID
-          </button>
-        )}
 
-        <div className="text-center mt-4 pt-4 border-t">
-          <p className="text-gray-500 text-sm">Test Accounts:</p>
-<p className="text-gray-400 text-xs mt-1">Student: 20230028369@my.xu.edu.ph / password123</p>
-          <p className="text-gray-400 text-xs">Faculty: faculty@xu.edu.ph / password123</p>
-          <p className="text-gray-400 text-xs">Admin: dfabela@xu.edu.ph / admin123</p>
-        </div>
-
-        <div className="text-center mt-4">
-          <p className="text-gray-600 text-sm">
+          <p className="mt-4 text-sm text-gray-600">
             Don't have an account?{' '}
-            <Link to="/register" className="text-primary font-medium hover:underline">
+            <Link to="/register" className="font-semibold text-blue-900 hover:underline">
               Create Account
             </Link>
           </p>
         </div>
+      </div>
+
+      <div className="hidden min-h-screen w-1/2 items-center justify-center bg-blue-950 px-10 md:flex">
+        <img className="h-48 w-full object-contain" src="/assets/XU_Logotype.png" alt="Xavier University" />
       </div>
     </div>
   );

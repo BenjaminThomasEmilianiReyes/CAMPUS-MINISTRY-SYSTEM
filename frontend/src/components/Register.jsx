@@ -64,46 +64,36 @@ const Register = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="absolute inset-0 overflow-hidden">
-        <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-      </div>
-      
-      <div className="relative max-w-md w-full space-y-8 bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8">
-        <div className="text-center">
-          {/* Xavier University Theme Logo */}
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center shadow-lg mb-4">
-            <svg className="w-12 h-12 text-blue-900" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 7.072l.707-.707a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Join Campus Ministry eCMS
-          </p>
-        </div>
+  const fieldClass = "mt-1 block h-11 w-full bg-sky-100 px-3 text-blue-950 outline-none ring-1 ring-transparent transition focus:bg-white focus:ring-2 focus:ring-blue-900";
+  const labelClass = "block text-sm font-medium text-blue-950";
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+  return (
+    <div className="min-h-screen bg-blue-950 md:flex">
+      <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-4 py-10 md:w-1/2">
+        <img
+          className="absolute inset-0 h-full w-full object-cover"
+          src="/assets/Login_Background.jpg"
+          alt=""
+        />
+        <div className="absolute inset-0 bg-blue-950/20" />
+
+        <div className="relative z-10 w-full max-w-2xl rounded-lg border-2 border-blue-950 bg-white p-6 text-center shadow-2xl sm:p-8">
+          <img className="mx-auto h-24 w-full object-contain pb-2" src="/assets/CMO_Seal.png" alt="CMO Seal" />
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-900">Campus Ministry</p>
+          <h1 className="pb-5 pt-1 text-xl font-semibold text-blue-950">CREATE ACCOUNT</h1>
+
+        <form className="space-y-5 text-left" onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* Role Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
-              <div className="grid grid-cols-3 gap-3">
+              <label className={`${labelClass} mb-2`}>Account Type</label>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'student' })}
-                  className={`px-4 py-3 rounded-xl border-2 text-center font-medium transition-all ${
+                  className={`border-2 px-2 py-3 text-center text-sm font-semibold transition-all ${
                     formData.role === 'student'
-                      ? 'border-blue-600 bg-blue-50 text-blue-600'
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      ? 'border-blue-900 bg-sky-100 text-blue-950'
+                      : 'border-blue-100 text-gray-600 hover:border-blue-300'
                   }`}
                 >
                   <svg className="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,10 +104,10 @@ const Register = () => {
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'admin' })}
-                  className={`px-4 py-3 rounded-xl border-2 text-center font-medium transition-all ${
+                  className={`border-2 px-2 py-3 text-center text-sm font-semibold transition-all ${
                     formData.role === 'admin'
-                      ? 'border-blue-600 bg-blue-50 text-blue-600'
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      ? 'border-blue-900 bg-sky-100 text-blue-950'
+                      : 'border-blue-100 text-gray-600 hover:border-blue-300'
                   }`}
                 >
                   <svg className="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,10 +118,10 @@ const Register = () => {
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'staff' })}
-                  className={`px-4 py-3 rounded-xl border-2 text-center font-medium transition-all ${
+                  className={`border-2 px-2 py-3 text-center text-sm font-semibold transition-all ${
                     formData.role === 'staff'
-                      ? 'border-blue-600 bg-blue-50 text-blue-600'
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      ? 'border-blue-900 bg-sky-100 text-blue-950'
+                      : 'border-blue-100 text-gray-600 hover:border-blue-300'
                   }`}
                 >
                   <svg className="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +133,7 @@ const Register = () => {
             </div>
 
             <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Full Name</label>
+              <label htmlFor="fullName" className={labelClass}>Full Name</label>
               <input
                 id="fullName"
                 name="fullName"
@@ -151,14 +141,14 @@ const Register = () => {
                 required
                 value={formData.fullName}
                 onChange={handleChange}
-                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={fieldClass}
                 placeholder="Enter your full name"
               />
             </div>
 
 {formData.role === 'admin' && (
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Admin Email</label>
+                <label htmlFor="email" className={labelClass}>Admin Email</label>
                 <input
                   id="email"
                   name="email"
@@ -166,7 +156,7 @@ const Register = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={fieldClass}
                   placeholder="e.g., dfabela@xu.edu.ph"
                 />
                 <p className="text-xs text-gray-500 mt-1">Use @xu.edu.ph for admin accounts</p>
@@ -176,7 +166,7 @@ const Register = () => {
 {formData.role === 'staff' && (
               <>
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">Faculty Email</label>
+                  <label htmlFor="email" className={labelClass}>Faculty Email</label>
                   <input
                     id="email"
                     name="email"
@@ -184,21 +174,21 @@ const Register = () => {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={fieldClass}
                     placeholder="e.g., faculty@xu.edu.ph"
                   />
                   <p className="text-xs text-gray-500 mt-1">Faculty accounts can view assigned students only</p>
                 </div>
 
                 <div>
-                  <label htmlFor="department" className="block text-sm font-medium text-gray-700">Assigned Department</label>
+                  <label htmlFor="department" className={labelClass}>Assigned Department</label>
                   <select
                     id="department"
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
                     required
-                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={fieldClass}
                   >
                     {departments.map((department) => (
                       <option key={department} value={department}>{department}</option>
@@ -207,13 +197,13 @@ const Register = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="batch" className="block text-sm font-medium text-gray-700">Assigned Course & Year</label>
+                  <label htmlFor="batch" className={labelClass}>Assigned Course & Year</label>
                   <select
                     id="batch"
                     name="batch"
                     value={formData.batch}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={fieldClass}
                   >
                     <option value="">All course/year groups in department</option>
                     <option value="BSIT-1">BSIT - 1st Year</option>
@@ -240,7 +230,7 @@ const Register = () => {
 {formData.role === 'student' && (
               <>
                 <div>
-                  <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">Student ID Number</label>
+                  <label htmlFor="studentId" className={labelClass}>Student ID Number</label>
                   <input
                     id="studentId"
                     name="studentId"
@@ -256,21 +246,21 @@ const Register = () => {
                         email: studentId ? `${studentId}@my.xu.edu.ph` : ''
                       });
                     }}
-                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={fieldClass}
 placeholder="e.g., 20230028369 (11 digits)"
                   />
 <p className="text-xs text-gray-500 mt-1">Enter your student ID number (11 digits)</p>
                 </div>
 
                 <div>
-                  <label htmlFor="department" className="block text-sm font-medium text-gray-700">Department</label>
+                  <label htmlFor="department" className={labelClass}>Department</label>
                   <select
                     id="department"
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
                     required
-                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={fieldClass}
                   >
                     {departments.map((department) => (
                       <option key={department} value={department}>{department}</option>
@@ -279,14 +269,14 @@ placeholder="e.g., 20230028369 (11 digits)"
                 </div>
 
                 <div>
-                  <label htmlFor="batch" className="block text-sm font-medium text-gray-700">Course & Year</label>
+                  <label htmlFor="batch" className={labelClass}>Course & Year</label>
                   <select
                     id="batch"
                     name="batch"
                     value={formData.batch}
                     onChange={handleChange}
                     required
-                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={fieldClass}
                   >
                     <option value="">Select Course & Year</option>
                     <optgroup label="BSIT - Bachelor of Science in IT">
@@ -319,7 +309,7 @@ placeholder="e.g., 20230028369 (11 digits)"
             )}
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+              <label htmlFor="password" className={labelClass}>Password</label>
               <div className="relative">
                 <input
                   id="password"
@@ -328,7 +318,7 @@ placeholder="e.g., 20230028369 (11 digits)"
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`${fieldClass} pr-11`}
                   placeholder="At least 6 characters"
                 />
                 <button
@@ -351,7 +341,7 @@ placeholder="e.g., 20230028369 (11 digits)"
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+              <label htmlFor="confirmPassword" className={labelClass}>Confirm Password</label>
               <input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -359,7 +349,7 @@ placeholder="e.g., 20230028369 (11 digits)"
                 required
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={fieldClass}
                 placeholder="Re-enter your password"
               />
             </div>
@@ -368,7 +358,7 @@ placeholder="e.g., 20230028369 (11 digits)"
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="mx-auto flex h-12 w-full items-center justify-center rounded-lg bg-blue-900 px-4 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-60 sm:w-1/2"
           >
             {loading ? (
               <span className="flex items-center">
@@ -386,12 +376,17 @@ placeholder="e.g., 20230028369 (11 digits)"
 <div className="text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link to="/login" className="font-medium text-primary hover:underline">
+              <Link to="/login" className="font-semibold text-blue-900 hover:underline">
                 Sign in
               </Link>
             </p>
           </div>
-        </form>
+          </form>
+        </div>
+      </div>
+
+      <div className="hidden min-h-screen w-1/2 items-center justify-center bg-blue-950 px-10 md:flex">
+        <img className="h-48 w-full object-contain" src="/assets/XU_Logotype.png" alt="Xavier University" />
       </div>
     </div>
   );
