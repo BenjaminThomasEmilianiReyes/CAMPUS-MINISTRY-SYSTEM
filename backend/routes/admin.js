@@ -36,12 +36,12 @@ const adminAuth = (req, res, next) => {
   next();
 };
 
-// 🔥 FIXED: Create Evaluation (Removes invalid _id from questions)
+//  FIXED: Create Evaluation (Removes invalid _id from questions)
 router.post('/evaluations', [auth, adminAuth], async (req, res) => {
   try {
-    console.log('📝 Creating evaluation:', req.body.title);
+    console.log(' Creating evaluation:', req.body.title);
     
-    // ✅ CRITICAL FIX: Remove _id from questions (frontend timestamp bug)
+    //  CRITICAL FIX: Remove _id from questions (frontend timestamp bug)
     const cleanQuestions = (req.body.questions || []).map(question => {
       const { _id, id, ...cleanQuestion } = question;
       return {
@@ -57,7 +57,7 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
     if (assignedStudents.length === 0 && batch && batch !== 'General') {
       const batchStudents = await User.find({ role: 'student', batch: batch }).select('_id');
       assignedStudents = batchStudents.map(s => s._id);
-      console.log(`🎯 Auto-assigning ${assignedStudents.length} students from batch: ${batch}`);
+      console.log(` Auto-assigning ${assignedStudents.length} students from batch: ${batch}`);
     }
 
     const evaluationData = {
@@ -70,12 +70,12 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
       createdBy: req.user.id
     };
 
-    console.log('✅ Cleaned questions:', cleanQuestions.length);
+    console.log(' Cleaned questions:', cleanQuestions.length);
 
     const evaluation = new Evaluation(evaluationData);
     await evaluation.save();
 
-    console.log(`🎉 Evaluation created: ${evaluation._id}`);
+    console.log(` Evaluation created: ${evaluation._id}`);
 
     // Assign to students
     if (assignedStudents && assignedStudents.length > 0) {
@@ -83,7 +83,7 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
         { _id: { $in: assignedStudents } },
         { $addToSet: { assignedEvaluations: evaluation._id } }
       );
-      console.log(`👥 Assigned to ${assignedStudents.length} students`);
+      console.log(` Assigned to ${assignedStudents.length} students`);
     }
 
     const populatedEval = await Evaluation.findById(evaluation._id)
@@ -92,7 +92,7 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
 
     res.status(201).json(populatedEval);
   } catch (error) {
-    console.error('❌ Create evaluation ERROR:', error.message);
+    console.error(' Create evaluation ERROR:', error.message);
     console.error('Full error:', error);
     res.status(500).json({ 
       message: 'Failed to create evaluation',
@@ -133,7 +133,7 @@ router.delete('/evaluations/:id', [auth, adminAuth], async (req, res) => {
     // Delete the evaluation
     await Evaluation.findByIdAndDelete(req.params.id);
 
-    console.log(`🗑️ Evaluation deleted: ${req.params.id}`);
+    console.log(` Evaluation deleted: ${req.params.id}`);
     res.json({ message: 'Evaluation deleted successfully' });
   } catch (error) {
     console.error('Delete evaluation error:', error);

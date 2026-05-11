@@ -80,7 +80,7 @@ const DataManagement = () => {
           disabled={exporting}
           className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all disabled:opacity-50"
         >
-          {exporting ? 'Exporting...' : '📥 Export All Data (CSV)'}
+          {exporting ? 'Exporting...' : ' Export All Data (CSV)'}
         </button>
       </div>
 

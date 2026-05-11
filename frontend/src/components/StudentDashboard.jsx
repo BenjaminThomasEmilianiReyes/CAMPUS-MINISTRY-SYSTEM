@@ -219,7 +219,7 @@ const StudentDashboard = () => {
         {/* Announcements */}
         <div className="bg-white rounded-2xl shadow-xl p-8 lg:sticky lg:top-24 lg:h-fit">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-            📢 Announcements
+             Announcements
           </h2>
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {dashboardData.announcements.map((announcement, index) => (
@@ -233,7 +233,7 @@ const StudentDashboard = () => {
         {/* Pending Evaluations */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            📝 Pending Evaluations 
+             Pending Evaluations 
             <span className="ml-2 bg-red-100 text-red-800 text-sm font-semibold px-3 py-1 rounded-full">
               {dashboardData.pendingEvaluations.length}
             </span>
@@ -243,7 +243,7 @@ const StudentDashboard = () => {
               <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-gray-500 text-lg">No pending evaluations 🎉</p>
+              <p className="text-gray-500 text-lg">No pending evaluations </p>
               <p className="text-sm text-gray-400 mt-1">Great job staying on top of your tasks!</p>
             </div>
           ) : (
@@ -260,7 +260,7 @@ const StudentDashboard = () => {
       {profileComplete && dashboardData.availableEvaluations && dashboardData.availableEvaluations.length > 0 && (
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            📋 Available Evaluations
+             Available Evaluations
             <span className="ml-2 bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full">
               {dashboardData.availableEvaluations.length}
             </span>
@@ -273,7 +273,7 @@ const StudentDashboard = () => {
                     <h3 className="font-bold text-lg text-gray-900">{evaluation.title}</h3>
                     <p className="text-gray-600 mt-1">{evaluation.description}</p>
                     <p className="text-sm text-gray-500 mt-2">
-                      📅 Due: {new Date(evaluation.dueDate).toLocaleDateString()}
+                       Due: {new Date(evaluation.dueDate).toLocaleDateString()}
                     </p>
                   </div>
                   <button
@@ -292,7 +292,7 @@ const StudentDashboard = () => {
       {/* Certificates */}
       {profileComplete && <div className="bg-white rounded-2xl shadow-xl p-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-8 flex items-center">
-          🏆 Your Certificates
+           Your Certificates
           <span className="ml-3 bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">
             {dashboardData.certificates.length}
           </span>
@@ -334,7 +334,7 @@ const StudentDashboard = () => {
                   })}
                 </p>
 
-                {/* ✅ NO LIBRARY NEEDED - Online QR API */}
+                {/*  NO LIBRARY NEEDED - Online QR API */}
                 <div className="flex justify-center mb-6 p-4 bg-gray-50 rounded-xl group-hover:bg-gray-100 transition-colors">
                   <img 
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cert.qrCode || `CERT:${cert._id}:Xavier-eCMS`)}&color=333333&bgcolor=ffffff`} 

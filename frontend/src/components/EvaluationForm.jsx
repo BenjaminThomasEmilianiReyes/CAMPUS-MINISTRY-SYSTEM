@@ -140,7 +140,7 @@ const EvaluationForm = () => {
             </p>
             <div className="mt-6 p-4 bg-blue-50 rounded-2xl">
               <p className="text-sm font-medium text-blue-800">
-                📅 Due: {new Date(evaluation.dueDate).toLocaleDateString()}
+                 Due: {new Date(evaluation.dueDate).toLocaleDateString()}
               </p>
             </div>
           </div>

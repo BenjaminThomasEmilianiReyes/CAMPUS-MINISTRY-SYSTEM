@@ -93,7 +93,7 @@ router.post('/register', async (req, res) => {
 // Auto-seed on first login attempt
 router.post('/autoseed', async (req, res) => {
   try {
-    console.log('🌱 Auto-creating test users...');
+    console.log(' Auto-creating test users...');
 
     const adminHash = await bcrypt.hash('admin123', 12);
     await User.findOneAndUpdate(
@@ -152,7 +152,7 @@ router.post('/autoseed', async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log('✅ Test users auto-created!');
+    console.log(' Test users auto-created!');
     res.json({ message: 'Test users created' });
   } catch (error) {
     console.error('Auto-seed error:', error);
@@ -259,7 +259,7 @@ router.post('/google', async (req, res) => {
 
 router.post('/seed', async (req, res) => {
   try {
-    console.log('🌱 Creating test users...');
+    console.log(' Creating test users...');
 
     const adminHash = await bcrypt.hash('admin123', 12);
     const admin = await User.findOneAndUpdate(
@@ -289,9 +289,9 @@ router.post('/seed', async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log('✅ Test users created!');
-    console.log(`👨‍💼 Admin: dfabela@xu.edu.ph / admin123`);
-    console.log(`👨‍🎓 Student: 20230028369@my.xu.edu.ph / password123`);
+    console.log(' Test users created!');
+    console.log(`‍ Admin: dfabela@xu.edu.ph / admin123`);
+    console.log(`‍ Student: 20230028369@my.xu.edu.ph / password123`);
 
     res.json({ 
       message: 'Test users created successfully!',
