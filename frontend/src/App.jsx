@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import StudentDashboard from './components/StudentDashboard';
 import StudentProfile from './components/StudentProfile';
+import FacultyDashboard from './components/FacultyDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import EvaluationForm from './components/EvaluationForm';
 import EvaluationBuilder from './components/EvaluationBuilder';
@@ -22,11 +23,16 @@ function AppContent() {
   const navigate = useNavigate();
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const getHomePath = (role) => {
+    if (role === 'admin') return '/admin/dashboard';
+    if (role === 'staff') return '/faculty/dashboard';
+    return '/student/dashboard';
+  };
 
   // Prevent back button from returning to login page
   useEffect(() => {
     if (user && (location.pathname === '/login' || location.pathname === '/register')) {
-      navigate(user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard');
+      navigate(getHomePath(user.role));
     }
     
     // Prevent browser back button
@@ -86,6 +92,18 @@ if (isAuthPage || !user) {
                 <Link to="/admin/recollections" className="p-3 rounded-lg hover:bg-secondary">Recollections</Link>
               )}
             </>
+          ) : user.role === 'staff' ? (
+            <>
+              {location.pathname !== '/faculty/dashboard' && (
+                <Link to="/faculty/dashboard" className="p-3 rounded-lg hover:bg-secondary">Dashboard</Link>
+              )}
+              {location.pathname !== '/admin/evaluation-builder' && (
+                <Link to="/admin/evaluation-builder" className="p-3 rounded-lg hover:bg-secondary">Create Evaluation</Link>
+              )}
+              {location.pathname !== '/admin/recollections' && (
+                <Link to="/admin/recollections" className="p-3 rounded-lg hover:bg-secondary">Recollections</Link>
+              )}
+            </>
           ) : (
             <>
               {location.pathname !== '/student/dashboard' && (
@@ -120,6 +138,12 @@ if (isAuthPage || !user) {
                     : location.pathname === '/admin/evaluation-builder'
                       ? 'Create Evaluation'
                       : 'Admin Dashboard'
+              : user.role === 'staff'
+                ? location.pathname === '/admin/recollections'
+                  ? 'Recollection Schedules'
+                  : location.pathname === '/admin/evaluation-builder'
+                    ? 'Create Evaluation'
+                    : 'Faculty Dashboard'
               : location.pathname === '/student/profile'
                 ? 'Student Profile'
                 : 'Student Dashboard'}
@@ -150,6 +174,14 @@ if (isAuthPage || !user) {
               } 
             />
             <Route 
+              path="/faculty/dashboard" 
+              element={
+                <ProtectedRoute role="staff">
+                  <FacultyDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/admin/dashboard" 
               element={
                 <ProtectedRoute role="admin">
@@ -161,7 +193,7 @@ if (isAuthPage || !user) {
             <Route 
               path="/admin/evaluation-builder" 
               element={
-                <ProtectedRoute role="admin">
+                <ProtectedRoute role={['admin', 'staff']}>
                   <EvaluationBuilder />
                 </ProtectedRoute>
               } 
@@ -185,7 +217,7 @@ if (isAuthPage || !user) {
             <Route 
               path="/admin/recollections" 
               element={
-                <ProtectedRoute role="admin">
+                <ProtectedRoute role={['admin', 'staff']}>
                   <RecollectionScheduleManager />
                 </ProtectedRoute>
               } 
@@ -193,12 +225,12 @@ if (isAuthPage || !user) {
             <Route 
               path="/admin/recollections/:id/registrants" 
               element={
-                <ProtectedRoute role="admin">
+                <ProtectedRoute role={['admin', 'staff']}>
                   <RecollectionRegistrants />
                 </ProtectedRoute>
               } 
             />
-<Route path="/" element={<Navigate to={user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard'} />} />
+<Route path="/" element={<Navigate to={getHomePath(user.role)} />} />
           </Routes>
         </main>
       </div>

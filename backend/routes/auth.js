@@ -45,6 +45,8 @@ router.get('/', (req, res) => {
 router.post('/register', async (req, res) => {
   try {
     const { fullName, email, studentId, password, role, batch, department } = req.body;
+    const accountRole = role || 'student';
+    const generatedIdPrefix = accountRole === 'staff' ? 'FAC' : 'ADMIN';
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -64,10 +66,10 @@ router.post('/register', async (req, res) => {
     const newUser = new User({
       fullName,
       email,
-      studentId: studentId || `ADMIN${Date.now()}`,
+      studentId: studentId || `${generatedIdPrefix}${Date.now()}`,
       password,
-      role: role || 'student',
-      department: department || inferDepartmentFromBatch(batch || ''),
+      role: accountRole,
+      department: ['student', 'staff'].includes(accountRole) ? (department || inferDepartmentFromBatch(batch || '')) : '',
       batch: batch || ''
     });
 
@@ -109,6 +111,20 @@ router.post('/autoseed', async (req, res) => {
     );
 
     const studentHash = await bcrypt.hash('password123', 12);
+    await User.findOneAndUpdate(
+      { email: 'faculty@xu.edu.ph' },
+      {
+        email: 'faculty@xu.edu.ph',
+        password: studentHash,
+        role: 'staff',
+        fullName: 'Faculty Adviser',
+        studentId: 'FAC001',
+        department: 'Computer Studies',
+        batch: 'BSIT-1'
+      },
+      { upsert: true, new: true }
+    );
+
     await User.findOneAndUpdate(
       { studentId: '20230028369' },
       {
@@ -170,19 +186,20 @@ router.post('/login', async (req, res) => {
     // If user doesn't exist, check if it's a test account.
     if (!user) {
       // Check if it's a test account and create it with the documented password.
-      if (email === '20230028369@my.xu.edu.ph' || email === 'dfabela@xu.edu.ph') {
+      if (email === '20230028369@my.xu.edu.ph' || email === 'dfabela@xu.edu.ph' || email === 'faculty@xu.edu.ph') {
         const isAdminTestUser = email === 'dfabela@xu.edu.ph';
+        const isFacultyTestUser = email === 'faculty@xu.edu.ph';
         const hashedPassword = await bcrypt.hash(isAdminTestUser ? 'admin123' : 'password123', 12);
         user = await User.findOneAndUpdate(
           { email },
           {
             email,
             password: hashedPassword,
-            role: isAdminTestUser ? 'admin' : 'student',
-            fullName: isAdminTestUser ? 'Dean Fabela' : 'John Doe',
-            studentId: isAdminTestUser ? 'ADMIN001' : '20230028369',
+            role: isAdminTestUser ? 'admin' : isFacultyTestUser ? 'staff' : 'student',
+            fullName: isAdminTestUser ? 'Dean Fabela' : isFacultyTestUser ? 'Faculty Adviser' : 'John Doe',
+            studentId: isAdminTestUser ? 'ADMIN001' : isFacultyTestUser ? 'FAC001' : '20230028369',
             department: isAdminTestUser ? '' : 'Computer Studies',
-            batch: isAdminTestUser ? '' : 'BSIT-1A'
+            batch: isAdminTestUser ? '' : isFacultyTestUser ? 'BSIT-1' : 'BSIT-1A'
           },
           { upsert: true, new: true }
         );
@@ -275,6 +292,20 @@ router.post('/seed', async (req, res) => {
     );
 
     const studentHash = await bcrypt.hash('password123', 12);
+    const faculty = await User.findOneAndUpdate(
+      { email: 'faculty@xu.edu.ph' },
+      {
+        email: 'faculty@xu.edu.ph',
+        password: studentHash,
+        role: 'staff',
+        fullName: 'Faculty Adviser',
+        studentId: 'FAC001',
+        department: 'Computer Studies',
+        batch: 'BSIT-1'
+      },
+      { upsert: true, new: true }
+    );
+
     const student = await User.findOneAndUpdate(
       { studentId: '20230028369' },
       {
@@ -291,11 +322,13 @@ router.post('/seed', async (req, res) => {
 
     console.log('✅ Test users created!');
     console.log(`👨‍💼 Admin: dfabela@xu.edu.ph / admin123`);
+    console.log(`👩‍🏫 Faculty: faculty@xu.edu.ph / password123`);
     console.log(`👨‍🎓 Student: 20230028369@my.xu.edu.ph / password123`);
 
     res.json({ 
       message: 'Test users created successfully!',
       admin: admin.email,
+      faculty: faculty.email,
       student: student.email 
     });
   } catch (error) {

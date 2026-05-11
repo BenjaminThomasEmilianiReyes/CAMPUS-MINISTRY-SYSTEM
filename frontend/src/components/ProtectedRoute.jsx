@@ -35,11 +35,18 @@ const ProtectedRoute = ({ children, role }) => {
     return <Navigate to="/login" />;
   }
 
-  if (role && user.role !== role) {
-    return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard'} />
+  const allowedRoles = Array.isArray(role) ? role : role ? [role] : [];
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    return <Navigate to={getHomePath(user.role)} />
   }
 
   return children;
 };
 
 export default ProtectedRoute;
+  const getHomePath = (userRole) => {
+    if (userRole === 'admin') return '/admin/dashboard';
+    if (userRole === 'staff') return '/faculty/dashboard';
+    return '/student/dashboard';
+  };

@@ -16,6 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/faculty', require('./routes/faculty'));
 app.use('/api/student', require('./routes/student'));
 app.use('/api/evaluation', require('./routes/evaluation'));
 

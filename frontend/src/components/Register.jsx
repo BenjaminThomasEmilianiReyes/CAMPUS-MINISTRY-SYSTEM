@@ -52,7 +52,7 @@ const Register = () => {
         studentId: formData.studentId,
         password: formData.password,
         role: formData.role,
-        department: formData.role === 'student' ? formData.department : '',
+        department: ['student', 'staff'].includes(formData.role) ? formData.department : '',
         batch: formData.batch
       });
       toast.success('Registration successful! Please login.');
@@ -96,7 +96,7 @@ const Register = () => {
             {/* Role Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'student' })}
@@ -124,6 +124,20 @@ const Register = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: 'staff' })}
+                  className={`px-4 py-3 rounded-xl border-2 text-center font-medium transition-all ${
+                    formData.role === 'staff'
+                      ? 'border-blue-600 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <svg className="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m8-5.13a3 3 0 11-6 0 3 3 0 016 0zM9 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Faculty
                 </button>
               </div>
             </div>
@@ -157,6 +171,70 @@ const Register = () => {
                 />
                 <p className="text-xs text-gray-500 mt-1">Use @xu.edu.ph for admin accounts</p>
               </div>
+            )}
+
+{formData.role === 'staff' && (
+              <>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">Faculty Email</label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., faculty@xu.edu.ph"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Faculty accounts can view assigned students only</p>
+                </div>
+
+                <div>
+                  <label htmlFor="department" className="block text-sm font-medium text-gray-700">Assigned Department</label>
+                  <select
+                    id="department"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    required
+                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {departments.map((department) => (
+                      <option key={department} value={department}>{department}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="batch" className="block text-sm font-medium text-gray-700">Assigned Course & Year</label>
+                  <select
+                    id="batch"
+                    name="batch"
+                    value={formData.batch}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">All course/year groups in department</option>
+                    <option value="BSIT-1">BSIT - 1st Year</option>
+                    <option value="BSIT-2">BSIT - 2nd Year</option>
+                    <option value="BSIT-3">BSIT - 3rd Year</option>
+                    <option value="BSIT-4">BSIT - 4th Year</option>
+                    <option value="BSCS-1">BSCS - 1st Year</option>
+                    <option value="BSCS-2">BSCS - 2nd Year</option>
+                    <option value="BSCS-3">BSCS - 3rd Year</option>
+                    <option value="BSCS-4">BSCS - 4th Year</option>
+                    <option value="BSIS-1">BSIS - 1st Year</option>
+                    <option value="BSIS-2">BSIS - 2nd Year</option>
+                    <option value="BSIS-3">BSIS - 3rd Year</option>
+                    <option value="BSIS-4">BSIS - 4th Year</option>
+                    <option value="ABCom-1">ABCom - 1st Year</option>
+                    <option value="ABCom-2">ABCom - 2nd Year</option>
+                    <option value="ABCom-3">ABCom - 3rd Year</option>
+                    <option value="ABCom-4">ABCom - 4th Year</option>
+                  </select>
+                </div>
+              </>
             )}
 
 {formData.role === 'student' && (

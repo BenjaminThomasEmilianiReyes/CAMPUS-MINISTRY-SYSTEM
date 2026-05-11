@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 
 const EvaluationBuilder = () => {
+  const { user } = useContext(AuthContext);
   const [questions, setQuestions] = useState([{ id: Date.now(), question: '', type: 'text', options: [], required: true }]);
   const [students, setStudents] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -11,7 +13,7 @@ const EvaluationBuilder = () => {
   const [loading, setLoading] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
-  const [batchFilter, setBatchFilter] = useState('');
+  const [batchFilter, setBatchFilter] = useState(user?.role === 'staff' ? user.batch || '' : '');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
   const { register, handleSubmit, reset, setValue } = useForm();
@@ -19,6 +21,9 @@ const EvaluationBuilder = () => {
   useEffect(() => {
     fetchStudents();
     fetchTemplates();
+    if (user?.role === 'staff' && user.batch) {
+      setValue('batch', user.batch);
+    }
   }, []);
 
   // Filter students by selected batch
@@ -128,7 +133,7 @@ const EvaluationBuilder = () => {
       setSelectedStudents([]);
       setSelectedTemplateId('');
     } catch (error) {
-      toast.error('Failed to create evaluation');
+      toast.error(error.response?.data?.message || 'Failed to create evaluation');
     } finally {
       setLoading(false);
     }
@@ -142,6 +147,13 @@ const EvaluationBuilder = () => {
         </h1>
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {/* Existing Template */}
+          {user?.role === 'staff' && (
+            <div className="p-5 rounded-2xl bg-yellow-100 text-yellow-900 font-medium">
+              Faculty access: you can create and post evaluations for your assigned scope only. Delete actions remain admin-only.
+            </div>
+          )}
+
           {/* Existing Template */}
           <div className="p-8 bg-blue-50 border border-blue-100 rounded-2xl">
             <label className="block text-lg font-semibold mb-3">Start from Existing Evaluation Template</label>
@@ -183,6 +195,7 @@ const EvaluationBuilder = () => {
               <label className="block text-lg font-semibold mb-3">Course & Year *</label>
               <select
                 {...register('batch', { required: true })}
+                disabled={user?.role === 'staff' && Boolean(user.batch)}
                 className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Course & Year</option>

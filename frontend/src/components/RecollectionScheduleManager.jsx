@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { AuthContext } from '../context/AuthContext';
 
 const RecollectionScheduleManager = () => {
+  const { user } = useContext(AuthContext);
+  const facultyYearLevel = user?.batch?.match(/-(\d)/)?.[1] || '1';
   const [recollections, setRecollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -12,8 +15,8 @@ const RecollectionScheduleManager = () => {
     description: '',
     date: '',
     venue: '',
-    department: 'Computer Studies',
-    yearLevel: '1',
+    department: user?.role === 'staff' ? user.department || 'Computer Studies' : 'Computer Studies',
+    yearLevel: user?.role === 'staff' ? facultyYearLevel : '1',
     facilitator: '',
     slots: 40
   });
@@ -70,8 +73,8 @@ const RecollectionScheduleManager = () => {
         description: '',
         date: '',
         venue: '',
-        department: 'Computer Studies',
-        yearLevel: '1',
+        department: user?.role === 'staff' ? user.department || 'Computer Studies' : 'Computer Studies',
+        yearLevel: user?.role === 'staff' ? facultyYearLevel : '1',
         facilitator: '',
         slots: 40
       });
@@ -114,6 +117,12 @@ const RecollectionScheduleManager = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {user?.role === 'staff' && (
+            <div className="rounded-2xl bg-yellow-100 p-5 text-yellow-900 font-medium">
+              Faculty access: you can create recollection schedules for your assigned department/year only. Delete actions remain admin-only.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
               <label className="block text-lg font-semibold mb-3">Title *</label>
@@ -169,7 +178,8 @@ const RecollectionScheduleManager = () => {
                 required
                 value={formData.department}
                 onChange={handleChange}
-                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                disabled={user?.role === 'staff'}
+                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
               >
                 {departments.map((department) => (
                   <option key={department} value={department}>{department}</option>
@@ -184,7 +194,8 @@ const RecollectionScheduleManager = () => {
                 required
                 value={formData.yearLevel}
                 onChange={handleChange}
-                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                disabled={user?.role === 'staff' && Boolean(user.batch)}
+                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
               >
                 <option value="1">1st Year</option>
                 <option value="2">2nd Year</option>
@@ -266,13 +277,15 @@ const RecollectionScheduleManager = () => {
                       >
                         Registrants
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(recollection._id)}
-                        className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                      >
-                        Delete
-                      </button>
+                      {user?.role === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(recollection._id)}
+                          className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

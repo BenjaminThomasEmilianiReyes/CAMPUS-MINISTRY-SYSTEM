@@ -24,7 +24,11 @@ const Login = () => {
     login(data);
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
 
-    const targetPath = data.user.role === 'student' ? '/student/dashboard' : '/admin/dashboard';
+    const targetPath = data.user.role === 'admin'
+      ? '/admin/dashboard'
+      : data.user.role === 'staff'
+        ? '/faculty/dashboard'
+        : '/student/dashboard';
     toast.success('Welcome to eCMS!');
     navigate(targetPath);
   };
@@ -153,6 +157,7 @@ placeholder="20230028369@my.xu.edu.ph"
         <div className="text-center mt-4 pt-4 border-t">
           <p className="text-gray-500 text-sm">Test Accounts:</p>
 <p className="text-gray-400 text-xs mt-1">Student: 20230028369@my.xu.edu.ph / password123</p>
+          <p className="text-gray-400 text-xs">Faculty: faculty@xu.edu.ph / password123</p>
           <p className="text-gray-400 text-xs">Admin: dfabela@xu.edu.ph / admin123</p>
         </div>
 

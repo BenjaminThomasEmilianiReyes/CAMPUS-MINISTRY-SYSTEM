@@ -36,10 +36,37 @@ const adminAuth = (req, res, next) => {
   next();
 };
 
+const adminOrFacultyAuth = (req, res, next) => {
+  if (!['admin', 'staff'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Admin or faculty access required' });
+  }
+  next();
+};
+
+const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getFacultyScope = async (req) => {
+  if (req.user.role !== 'staff') return null;
+  return User.findById(req.user.id).select('department batch').lean();
+};
+
+const applyFacultyStudentScope = (query, faculty) => {
+  if (!faculty) return query;
+  if (faculty.department) query.department = faculty.department;
+  if (faculty.batch) query.batch = { $regex: `^${escapeRegex(faculty.batch)}` };
+  return query;
+};
+
+const ensureFacultyBatchAccess = (faculty, batch) => {
+  if (!faculty || !faculty.batch || !batch || batch === 'General') return true;
+  return String(batch).startsWith(faculty.batch);
+};
+
 // 🔥 FIXED: Create Evaluation (Removes invalid _id from questions)
-router.post('/evaluations', [auth, adminAuth], async (req, res) => {
+router.post('/evaluations', [auth, adminOrFacultyAuth], async (req, res) => {
   try {
     console.log('📝 Creating evaluation:', req.body.title);
+    const faculty = await getFacultyScope(req);
     
     // ✅ CRITICAL FIX: Remove _id from questions (frontend timestamp bug)
     const cleanQuestions = (req.body.questions || []).map(question => {
@@ -52,12 +79,25 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
 
     const batch = req.body.batch || 'General';
     let assignedStudents = req.body.assignedStudents || [];
+
+    if (!ensureFacultyBatchAccess(faculty, batch)) {
+      return res.status(403).json({ message: 'Faculty can only create evaluations for their assigned course/year scope' });
+    }
     
     // Auto-assign students based on batch if no specific students selected
     if (assignedStudents.length === 0 && batch && batch !== 'General') {
-      const batchStudents = await User.find({ role: 'student', batch: batch }).select('_id');
+      const studentQuery = applyFacultyStudentScope({ role: 'student', batch: { $regex: `^${escapeRegex(batch)}` } }, faculty);
+      const batchStudents = await User.find(studentQuery).select('_id');
       assignedStudents = batchStudents.map(s => s._id);
       console.log(`🎯 Auto-assigning ${assignedStudents.length} students from batch: ${batch}`);
+    } else if (faculty && assignedStudents.length > 0) {
+      const scopedStudents = await User.find(applyFacultyStudentScope({
+        role: 'student',
+        _id: { $in: assignedStudents }
+      }, faculty)).select('_id');
+      if (scopedStudents.length !== assignedStudents.length) {
+        return res.status(403).json({ message: 'Faculty can only assign students in their assigned scope' });
+      }
     }
 
     const evaluationData = {
@@ -103,9 +143,11 @@ router.post('/evaluations', [auth, adminAuth], async (req, res) => {
 });
 
 // Get evaluations
-router.get('/evaluations', [auth, adminAuth], async (req, res) => {
+router.get('/evaluations', [auth, adminOrFacultyAuth], async (req, res) => {
   try {
-    const evaluations = await Evaluation.find()
+    const faculty = await getFacultyScope(req);
+    const query = faculty?.batch ? { batch: { $regex: `^${escapeRegex(faculty.batch)}` } } : {};
+    const evaluations = await Evaluation.find(query)
       .populate('createdBy', 'fullName')
       .populate('assignedStudents', 'fullName studentId')
       .sort({ createdAt: -1 });
@@ -142,9 +184,18 @@ router.delete('/evaluations/:id', [auth, adminAuth], async (req, res) => {
 });
 
 // Get recollection schedules
-router.get('/recollections', [auth, adminAuth], async (req, res) => {
+router.get('/recollections', [auth, adminOrFacultyAuth], async (req, res) => {
   try {
-    const recollections = await Recollection.find()
+    const faculty = await getFacultyScope(req);
+    const query = faculty
+      ? {
+          ...(faculty.department ? { department: faculty.department } : {}),
+          ...(faculty.batch ? { yearLevel: String(faculty.batch).match(/-(\d)/)?.[1] || undefined } : {})
+        }
+      : {};
+    if (query.yearLevel === undefined) delete query.yearLevel;
+
+    const recollections = await Recollection.find(query)
       .populate('participants', 'fullName studentId batch department')
       .sort({ date: 1 });
 
@@ -156,14 +207,23 @@ router.get('/recollections', [auth, adminAuth], async (req, res) => {
 });
 
 // Get one recollection schedule with registrants
-router.get('/recollections/:id', [auth, adminAuth], async (req, res) => {
+router.get('/recollections/:id', [auth, adminOrFacultyAuth], async (req, res) => {
   try {
+    const faculty = await getFacultyScope(req);
     const recollection = await Recollection.findById(req.params.id)
       .populate('participants', 'fullName studentId email batch department')
       .sort({ date: 1 });
 
     if (!recollection) {
       return res.status(404).json({ message: 'Recollection schedule not found' });
+    }
+
+    if (faculty) {
+      const facultyYearLevel = String(faculty.batch || '').match(/-(\d)/)?.[1] || '';
+      if ((faculty.department && recollection.department !== faculty.department) ||
+        (facultyYearLevel && recollection.yearLevel !== facultyYearLevel)) {
+        return res.status(403).json({ message: 'Faculty can only view recollections in their assigned scope' });
+      }
     }
 
     res.json(recollection);
@@ -174,14 +234,23 @@ router.get('/recollections/:id', [auth, adminAuth], async (req, res) => {
 });
 
 // Create recollection schedule
-router.post('/recollections', [auth, adminAuth], async (req, res) => {
+router.post('/recollections', [auth, adminOrFacultyAuth], async (req, res) => {
   try {
+    const faculty = await getFacultyScope(req);
     if (!['1', '2', '3', '4'].includes(req.body.yearLevel)) {
       return res.status(400).json({ message: 'Please select a valid year level' });
     }
 
     if (!departments.includes(req.body.department)) {
       return res.status(400).json({ message: 'Please select a valid department' });
+    }
+
+    if (faculty) {
+      const facultyYearLevel = String(faculty.batch || '').match(/-(\d)/)?.[1] || '';
+      if ((faculty.department && req.body.department !== faculty.department) ||
+        (facultyYearLevel && req.body.yearLevel !== facultyYearLevel)) {
+        return res.status(403).json({ message: 'Faculty can only create recollections in their assigned scope' });
+      }
     }
 
     const recollection = new Recollection({
@@ -389,14 +458,22 @@ router.get('/export-csv', [auth, adminAuth], async (req, res) => {
 });
 
 // Students list
-router.get('/students', [auth, adminAuth], async (req, res) => {
+router.get('/students', [auth, adminOrFacultyAuth], async (req, res) => {
   try {
     const { batch, yearLevel, completionStatus } = req.query;
-    const query = { role: 'student' };
+    const faculty = await getFacultyScope(req);
+    const query = applyFacultyStudentScope({ role: 'student' }, faculty);
 
     if (batch) {
-      query.batch = batch;
-    } else if (yearLevel) {
+      if (!ensureFacultyBatchAccess(faculty, batch)) {
+        return res.status(403).json({ message: 'Faculty can only view students in their assigned scope' });
+      }
+      query.batch = { $regex: `^${escapeRegex(batch)}` };
+    } else if (yearLevel && !faculty?.batch) {
+      const facultyYearLevel = String(faculty?.batch || '').match(/-(\d)/)?.[1] || '';
+      if (facultyYearLevel && String(yearLevel) !== facultyYearLevel) {
+        return res.status(403).json({ message: 'Faculty can only view students in their assigned year level' });
+      }
       query.batch = { $regex: `-${yearLevel}` };
     }
 
