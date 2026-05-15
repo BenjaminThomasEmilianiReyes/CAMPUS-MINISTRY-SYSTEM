@@ -4,6 +4,7 @@ const certificateSchema = new mongoose.Schema({
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   eventName: { type: String, required: true },
   eventDate: { type: Date, required: true },
+  qrData: { type: String },
   qrCode: { type: String, required: true },
   status: { type: String, enum: ['pending', 'issued', 'verified'], default: 'pending' },
   issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }

@@ -1,48 +1,158 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
+const emptyStudent = {
+  studentId: '',
+  college: '',
+  department: '',
+  major: '',
+  email: '',
+  firstName: '',
+  lastName: '',
+  yearStanding: ''
+};
+
+const colleges = [
+  { name: 'AGRICULTURE', value: 'Agriculture', department: 'Agriculture' },
+  { name: 'ARTS & SCIENCES', value: 'Arts and Sciences', department: 'Arts and Science' },
+  { name: 'BUSINESS MANAGEMENT', value: 'Business Management', department: 'Business Management' },
+  { name: 'COMPUTER STUDIES', value: 'Computer Studies', department: 'Computer Studies' },
+  { name: 'EDUCATION', value: 'Education', department: 'Education' },
+  { name: 'ENGINEERING', value: 'Engineering', department: 'Engineering' },
+  { name: 'NURSING', value: 'Nursing', department: 'Nursing' }
+];
+const departments = ['Computer Studies', 'Arts and Science', 'Business Management', 'Engineering', 'Nursing', 'Education', 'Agriculture'];
+
 const StudentRecords = () => {
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [completionStatus, setCompletionStatus] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [selectedCollege, setSelectedCollege] = useState(null);
+  const [modal, setModal] = useState({ open: false, mode: 'add', student: null });
+  const [formData, setFormData] = useState(emptyStudent);
+
+  const fetchStudents = async () => {
+    try {
+      const response = await api.get('/admin/students');
+      setStudents(response.data || []);
+    } catch (error) {
+      toast.error('Failed to load student records');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (completionStatus) params.append('completionStatus', completionStatus);
-
-        const response = await api.get(`/admin/students?${params.toString()}`);
-        setStudents(response.data || []);
-      } catch (error) {
-        toast.error('Failed to load student records');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStudents();
-  }, [completionStatus]);
+  }, []);
 
   const filteredStudents = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return students;
+    return students.filter((student) => {
+      const collegeDepartment = selectedCollege?.department;
+      const matchesCollege = collegeDepartment ? student.department === collegeDepartment || student.college === selectedCollege.value : true;
+      const matchesDepartment = departmentFilter ? student.department === departmentFilter : true;
+      const matchesSearch = keyword
+        ? [student.fullName, student.email, student.studentId, student.department, student.major].some((value) =>
+            String(value || '').toLowerCase().includes(keyword)
+          )
+        : true;
+      return matchesCollege && matchesDepartment && matchesSearch;
+    });
+  }, [students, search, departmentFilter, selectedCollege]);
 
-    return students.filter((student) =>
-      [student.fullName, student.email, student.studentId, student.batch, student.department].some((value) =>
-        String(value || '').toLowerCase().includes(keyword)
-      )
-    );
-  }, [students, search]);
+  const selectedCollegeStudents = students.filter((student) => (
+    selectedCollege
+      ? student.department === selectedCollege.department || student.college === selectedCollege.value
+      : true
+  ));
 
   const stats = [
-    ['Student Records', students.length],
-    ['With Submissions', students.filter((student) => student.completedEvaluations > 0).length],
-    ['Pending', students.filter((student) => !student.completedEvaluations).length],
-    ['Departments', new Set(students.map((student) => student.department).filter(Boolean)).size]
+    ['Student Records', selectedCollegeStudents.length],
+    ['Complete', selectedCollegeStudents.filter((student) => (student.certificateCount || 0) >= 4).length],
+    ['Incomplete', selectedCollegeStudents.filter((student) => (student.certificateCount || 0) < 4).length],
+    ['Departments', new Set(selectedCollegeStudents.map((student) => student.department).filter(Boolean)).size]
   ];
+
+  const openAdd = () => {
+    setFormData({
+      ...emptyStudent,
+      college: selectedCollege?.value || '',
+      department: selectedCollege?.department || ''
+    });
+    setModal({ open: true, mode: 'add', student: null });
+  };
+
+  const openEdit = (student) => {
+    setFormData({
+      studentId: student.studentId || '',
+      college: student.college || '',
+      department: student.department || '',
+      major: student.major || '',
+      email: student.email || '',
+      firstName: student.firstName || String(student.fullName || '').split(' ').slice(0, -1).join(' '),
+      lastName: student.lastName || String(student.fullName || '').split(' ').slice(-1)[0] || '',
+      yearStanding: student.yearStanding || String(student.batch || '').match(/-(\d)/)?.[1] || ''
+    });
+    setModal({ open: true, mode: 'edit', student });
+  };
+
+  const closeModal = () => {
+    setFormData(emptyStudent);
+    setModal({ open: false, mode: 'add', student: null });
+  };
+
+  const validateForm = () => {
+    if (!formData.studentId || !formData.department || !formData.email || !formData.firstName || !formData.lastName || !formData.yearStanding) {
+      toast.error('Please fill in all required fields');
+      return false;
+    }
+
+    if (!/^\d+$/.test(formData.studentId)) {
+      toast.error('Student ID must contain only numbers');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!validateForm()) return;
+
+    setSaving(true);
+    try {
+      if (modal.mode === 'edit' && modal.student?._id) {
+        await api.put(`/admin/students/${modal.student._id}`, formData);
+        toast.success('Student updated successfully');
+      } else {
+        await api.post('/admin/students', formData);
+        toast.success('Student created successfully');
+      }
+      closeModal();
+      fetchStudents();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save student');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (studentId) => {
+    if (!window.confirm('Delete this student? This cannot be undone.')) return;
+    try {
+      await api.delete(`/admin/students/${studentId}`);
+      toast.success('Student deleted successfully');
+      fetchStudents();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete student');
+    }
+  };
 
   if (loading) {
     return (
@@ -59,6 +169,55 @@ const StudentRecords = () => {
       </h1>
 
       <div className="mx-6 space-y-8 lg:mx-9">
+        {!selectedCollege ? (
+          <section className="rounded-lg bg-white p-6 shadow-lg">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Colleges</h2>
+              <p className="text-sm text-gray-500">Select a college to view and manage its student records.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 text-center sm:grid-cols-2 lg:grid-cols-4">
+              {colleges.map((college) => (
+                <button
+                  key={college.value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCollege(college);
+                    setDepartmentFilter('');
+                    setSearch('');
+                  }}
+                  className="relative flex h-40 flex-col items-center justify-center overflow-hidden rounded bg-white p-4 text-xl font-semibold text-gray-900 shadow-lg ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-xl"
+                >
+                  <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-[#edf0f7]">
+                    <img src="/assets/CMO_Seal.png" alt="" className="h-12 w-12 object-contain opacity-80" />
+                  </div>
+                  <span>{college.name}</span>
+                  <span className="mt-2 text-sm font-medium text-[#3a53a5]">
+                    {students.filter((student) => student.department === college.department || student.college === college.value).length} records
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <>
+            <div className="flex flex-col justify-between gap-3 rounded-lg bg-white p-5 shadow-lg md:flex-row md:items-center">
+              <div>
+                <p className="text-sm font-semibold uppercase text-gray-500">Selected College</p>
+                <h2 className="text-2xl font-bold text-[#3a53a5]">{selectedCollege.name}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCollege(null);
+                  setDepartmentFilter('');
+                  setSearch('');
+                }}
+                className="bg-[#3a53a5] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2a3a85]"
+              >
+                Back to Colleges
+              </button>
+            </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map(([label, value]) => (
             <div key={label} className="flex items-center justify-between rounded-lg border-l-4 border-[#3a53a5] bg-white p-6 shadow-lg">
@@ -73,26 +232,20 @@ const StudentRecords = () => {
           ))}
         </div>
 
+        <div>
+          <button onClick={openAdd} className="bg-[#3a53a5] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2a3a85]">
+            Add Student
+          </button>
+        </div>
+
         <section className="overflow-hidden rounded-2xl bg-white shadow-lg">
-          <div className="flex flex-col justify-between gap-4 border-b px-6 py-4 lg:flex-row lg:items-center">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Student List</h2>
-              <p className="text-sm text-gray-500">Student information, course/year, and evaluation completion progress.</p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search students"
-                className="h-10 w-full border border-gray-300 px-3 text-sm outline-none focus:border-[#3a53a5] sm:w-64"
-              />
-              <select
-                value={completionStatus}
-                onChange={(event) => setCompletionStatus(event.target.value)}
-                className="h-10 border border-gray-300 px-3 text-sm outline-none focus:border-[#3a53a5]"
-              >
-                <option value="">All Students</option>
-                <option value="completed">With Submissions</option>
+          <div className="flex flex-col justify-between gap-4 border-b px-6 py-4 xl:flex-row xl:items-center">
+            <h2 className="text-xl font-semibold text-gray-900">Student List</h2>
+            <div className="flex flex-col gap-3 md:flex-row">
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search students" className="h-10 w-full border border-gray-300 px-3 text-sm outline-none focus:border-[#3a53a5] md:w-64" />
+              <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="h-10 border border-gray-300 px-3 text-sm outline-none focus:border-[#3a53a5]">
+                <option value="">Select Department</option>
+                {departments.map((department) => <option key={department} value={department}>{department}</option>)}
               </select>
             </div>
           </div>
@@ -101,40 +254,78 @@ const StudentRecords = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Student</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Email</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Department</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Batch</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Completed</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Latest Submission</th>
+                  {['Student ID', 'Last Name', 'First Name', 'Department', 'Year Standing', 'Certificates', 'Actions'].map((heading) => (
+                    <th key={heading} className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">{heading}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {filteredStudents.map((student) => (
                   <tr key={student._id} className="hover:bg-gray-50">
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <p className="text-sm font-semibold text-gray-900">{student.fullName}</p>
-                      <p className="text-sm text-gray-500">{student.studentId || '-'}</p>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{student.email}</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{student.department || '-'}</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{student.batch || '-'}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-[#3a53a5]">
-                      {student.completedEvaluations || 0}
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/student-records/profile/${student.studentId}`)}
+                        className="text-left text-[#3a53a5] underline hover:text-[#2a3a85]"
+                      >
+                        {student.studentId}
+                      </button>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                      {student.latestSubmissionAt ? new Date(student.latestSubmissionAt).toLocaleString() : '-'}
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{student.lastName || '-'}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{student.firstName || student.fullName}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{student.department || '-'}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{student.yearStanding || '-'}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{student.certificateCount || 0}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <button onClick={() => openEdit(student)} className="mr-4 font-semibold text-[#3a53a5] hover:underline">Edit</button>
+                      <button onClick={() => handleDelete(student._id)} className="font-semibold text-red-600 hover:underline">Delete</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {filteredStudents.length === 0 && (
-              <div className="py-10 text-center text-gray-500">No students match your filters.</div>
-            )}
+            {filteredStudents.length === 0 && <div className="py-10 text-center text-gray-500">No students found.</div>}
           </div>
         </section>
+          </>
+        )}
       </div>
+
+      {modal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md bg-white p-6 shadow-2xl">
+            <h2 className="mb-4 text-xl font-bold text-gray-900">{modal.mode === 'edit' ? 'Edit Student' : 'Add New Student'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <input value={formData.studentId} onChange={(event) => setFormData({ ...formData, studentId: event.target.value })} disabled={modal.mode === 'edit'} placeholder="Student ID" className="h-10 w-full border px-3 disabled:bg-gray-100" />
+              <select value={formData.college} onChange={(event) => setFormData({ ...formData, college: event.target.value })} className="h-10 w-full border px-3">
+                <option value="">Select College</option>
+                {colleges.map((college) => <option key={college.value} value={college.value}>{college.name}</option>)}
+              </select>
+              <select value={formData.department} onChange={(event) => setFormData({ ...formData, department: event.target.value })} className="h-10 w-full border px-3">
+                <option value="">Select Department</option>
+                {departments.map((department) => <option key={department} value={department}>{department}</option>)}
+              </select>
+              <input value={formData.major} onChange={(event) => setFormData({ ...formData, major: event.target.value })} placeholder="Major" className="h-10 w-full border px-3" />
+              <input type="email" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value })} placeholder="Email" className="h-10 w-full border px-3" />
+              <input value={formData.firstName} onChange={(event) => setFormData({ ...formData, firstName: event.target.value })} placeholder="First Name" className="h-10 w-full border px-3" />
+              <input value={formData.lastName} onChange={(event) => setFormData({ ...formData, lastName: event.target.value })} placeholder="Last Name" className="h-10 w-full border px-3" />
+              <select value={formData.yearStanding} onChange={(event) => setFormData({ ...formData, yearStanding: event.target.value })} className="h-10 w-full border px-3">
+                <option value="">Select Year Level</option>
+                <option value="1">1st</option>
+                <option value="2">2nd</option>
+                <option value="3">3rd</option>
+                <option value="4">4th</option>
+              </select>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={closeModal} className="bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600">Cancel</button>
+                <button type="submit" disabled={saving} className="bg-[#3a53a5] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2a3a85] disabled:opacity-60">
+                  {saving ? 'Saving...' : modal.mode === 'edit' ? 'Update Student' : 'Add Student'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

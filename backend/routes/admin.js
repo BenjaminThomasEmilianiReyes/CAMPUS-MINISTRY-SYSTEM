@@ -4,7 +4,10 @@ const Evaluation = require('../models/Evaluation');
 const User = require('../models/User');
 const Certificate = require('../models/Certificate');
 const Recollection = require('../models/Recollection');
+const CmoEvent = require('../models/CmoEvent');
+const CertificateTemplate = require('../models/CertificateTemplate');
 const QRCode = require('qrcode');
+const { sendEmail } = require('../services/emailService');
 const router = express.Router();
 const departments = [
   'Nursing',
@@ -38,7 +41,7 @@ const adminAuth = (req, res, next) => {
 
 const adminOrFacultyAuth = (req, res, next) => {
   if (!['admin', 'staff'].includes(req.user.role)) {
-    return res.status(403).json({ message: 'Admin or faculty access required' });
+    return res.status(403).json({ message: 'Admin or formator access required' });
   }
   next();
 };
@@ -62,6 +65,344 @@ const ensureFacultyBatchAccess = (faculty, batch) => {
   return String(batch).startsWith(faculty.batch);
 };
 
+const escapeHtml = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const getStudentsForRecollection = async (recollection) => {
+  const yearPattern = `-${escapeRegex(recollection.yearLevel)}`;
+  return User.find({
+    role: 'student',
+    department: recollection.department,
+    batch: { $regex: yearPattern },
+    email: { $exists: true, $ne: '' }
+  })
+    .select('fullName email studentId batch department')
+    .lean();
+};
+
+const notifyStudentsForRecollection = async (recollection) => {
+  const students = await getStudentsForRecollection(recollection);
+  if (students.length === 0) {
+    return { matchedStudents: 0, sent: 0, previewed: 0, failed: 0 };
+  }
+
+  const scheduleDate = new Date(recollection.date);
+  const formattedDate = scheduleDate.toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
+    dateStyle: 'full',
+    timeStyle: 'short'
+  });
+
+  const subject = `New Recollection Schedule: ${recollection.title}`;
+  const results = await Promise.allSettled(students.map((student) => {
+    const text = [
+      `Hello ${student.fullName},`,
+      '',
+      'A recollection schedule has been posted for your department and year level.',
+      '',
+      `Title: ${recollection.title}`,
+      `Date and Time: ${formattedDate}`,
+      `Venue: ${recollection.venue}`,
+      `Department: ${recollection.department}`,
+      `Year Level: ${recollection.yearLevel}`,
+      recollection.facilitator ? `Facilitator: ${recollection.facilitator}` : '',
+      '',
+      recollection.description || '',
+      '',
+      'Please log in to the Campus Ministry System to view the schedule and register if needed.'
+    ].filter(Boolean).join('\n');
+
+    const html = `
+      <p>Hello ${escapeHtml(student.fullName)},</p>
+      <p>A recollection schedule has been posted for your department and year level.</p>
+      <ul>
+        <li><strong>Title:</strong> ${escapeHtml(recollection.title)}</li>
+        <li><strong>Date and Time:</strong> ${formattedDate}</li>
+        <li><strong>Venue:</strong> ${escapeHtml(recollection.venue)}</li>
+        <li><strong>Department:</strong> ${escapeHtml(recollection.department)}</li>
+        <li><strong>Year Level:</strong> ${escapeHtml(recollection.yearLevel)}</li>
+        ${recollection.facilitator ? `<li><strong>Facilitator:</strong> ${escapeHtml(recollection.facilitator)}</li>` : ''}
+      </ul>
+      ${recollection.description ? `<p>${escapeHtml(recollection.description)}</p>` : ''}
+      <p>Please log in to the Campus Ministry System to view the schedule and register if needed.</p>
+    `;
+
+    return sendEmail({
+      to: student.email,
+      subject,
+      text,
+      html
+    });
+  }));
+
+  return results.reduce((summary, result) => {
+    if (result.status === 'rejected') {
+      return { ...summary, failed: summary.failed + 1 };
+    }
+    if (result.value.preview) {
+      return { ...summary, previewed: summary.previewed + 1 };
+    }
+    return { ...summary, sent: summary.sent + 1 };
+  }, { matchedStudents: students.length, sent: 0, previewed: 0, failed: 0 });
+};
+
+const buildEventQuery = ({ keyword, startDate, endDate } = {}) => {
+  const query = {};
+  if (keyword) {
+    const regex = new RegExp(escapeRegex(keyword), 'i');
+    query.$or = [
+      { department: regex },
+      { description: regex },
+      { batch: regex },
+      { yearLevel: regex },
+      { venue: regex },
+      { inCharge: regex }
+    ];
+  }
+
+  if (startDate || endDate) {
+    query.eventDate = {};
+    if (startDate) query.eventDate.$gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      query.eventDate.$lte = end;
+    }
+  }
+
+  return query;
+};
+
+const normalizeRole = (role = '') => {
+  const value = String(role).toLowerCase();
+  if (value === 'admin') return 'admin';
+  if (value === 'staff' || value === 'formator') return 'staff';
+  return 'student';
+};
+
+const splitName = (fullName = '') => {
+  const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: '', lastName: '' };
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+  return { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] };
+};
+
+router.get('/dashboard-cards', [auth, adminAuth], async (req, res) => {
+  try {
+    const now = new Date();
+    const nextWeek = new Date(now);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const [totalStudents, totalCertificates, eventsNextWeek, eventsThisMonth] = await Promise.all([
+      User.countDocuments({ role: 'student' }),
+      Certificate.countDocuments(),
+      CmoEvent.countDocuments({ eventDate: { $gte: now, $lte: nextWeek } }),
+      CmoEvent.countDocuments({ eventDate: { $gte: monthStart, $lte: monthEnd } })
+    ]);
+
+    res.json({ totalStudents, totalCertificates, eventsNextWeek, eventsThisMonth });
+  } catch (error) {
+    console.error('Dashboard cards error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/events', [auth, adminAuth], async (req, res) => {
+  try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+    const query = buildEventQuery(req.query);
+
+    const [events, totalCount] = await Promise.all([
+      CmoEvent.find(query)
+        .sort({ eventDate: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      CmoEvent.countDocuments(query)
+    ]);
+
+    res.json({ data: events, totalCount, page, limit });
+  } catch (error) {
+    console.error('Events list error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/events', [auth, adminAuth], async (req, res) => {
+  try {
+    const required = ['eventDate', 'department', 'description', 'batch', 'yearLevel', 'venue', 'inCharge'];
+    const missing = required.filter((field) => !req.body[field]);
+    if (missing.length) {
+      return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
+    }
+
+    const event = await CmoEvent.create({
+      eventDate: new Date(req.body.eventDate),
+      department: req.body.department,
+      description: req.body.description,
+      batch: req.body.batch,
+      yearLevel: req.body.yearLevel,
+      venue: req.body.venue,
+      inCharge: req.body.inCharge,
+      createdBy: req.user.id
+    });
+
+    res.status(201).json(event);
+  } catch (error) {
+    console.error('Create event error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/events/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    const event = await CmoEvent.findByIdAndUpdate(
+      req.params.id,
+      {
+        eventDate: req.body.eventDate ? new Date(req.body.eventDate) : undefined,
+        department: req.body.department,
+        description: req.body.description,
+        batch: req.body.batch,
+        yearLevel: req.body.yearLevel,
+        venue: req.body.venue,
+        inCharge: req.body.inCharge
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+    res.json(event);
+  } catch (error) {
+    console.error('Update event error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/events/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    const event = await CmoEvent.findByIdAndDelete(req.params.id);
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+    res.json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error('Delete event error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/certificate-templates', [auth, adminOrFacultyAuth], async (req, res) => {
+  try {
+    const keyword = String(req.query.keyword || '').trim();
+    const query = keyword
+      ? { templateTitle: { $regex: escapeRegex(keyword), $options: 'i' } }
+      : {};
+
+    const templates = await CertificateTemplate.find(query).sort({ createdAt: -1 }).lean();
+    res.json(templates);
+  } catch (error) {
+    console.error('Certificate templates error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/certificate-templates', [auth, adminOrFacultyAuth], async (req, res) => {
+  try {
+    const required = ['templateTitle', 'certEventYearLevel', 'certEventType', 'certEventTheme', 'certEventDate', 'certEventVenue', 'certDirectorName'];
+    const missing = required.filter((field) => !req.body[field]);
+    if (missing.length) return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
+
+    const template = await CertificateTemplate.create({
+      templateTitle: req.body.templateTitle,
+      certBgImgKey: req.body.certBgImgKey || '',
+      certEventYearLevel: req.body.certEventYearLevel,
+      certEventType: req.body.certEventType,
+      certEventTheme: req.body.certEventTheme,
+      certEventDate: req.body.certEventDate,
+      certEventVenue: req.body.certEventVenue,
+      certDirectorName: req.body.certDirectorName,
+      certSigImgKey: req.body.certSigImgKey || '',
+      createdBy: req.user.id
+    });
+
+    res.status(201).json(template);
+  } catch (error) {
+    console.error('Create certificate template error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/certificate-templates/:id', [auth, adminOrFacultyAuth], async (req, res) => {
+  try {
+    const template = await CertificateTemplate.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    });
+    if (!template) return res.status(404).json({ message: 'Template not found' });
+    res.json(template);
+  } catch (error) {
+    console.error('Update certificate template error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/certificate-templates/:id', [auth, adminOrFacultyAuth], async (req, res) => {
+  try {
+    const template = await CertificateTemplate.findByIdAndDelete(req.params.id);
+    if (!template) return res.status(404).json({ message: 'Template not found' });
+    res.json({ message: 'Template deleted successfully' });
+  } catch (error) {
+    console.error('Delete certificate template error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/student-profile/:studentId', [auth, adminOrFacultyAuth], async (req, res) => {
+  try {
+    const student = await User.findOne({
+      role: 'student',
+      studentId: req.params.studentId
+    })
+      .populate({
+        path: 'certificates',
+        populate: { path: 'issuedBy', select: 'fullName email' }
+      })
+      .lean();
+
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    const certificates = (student.certificates || []).map((certificate) => ({
+      certificateId: certificate._id,
+      certificateURL: certificate.qrCode || '',
+      eventName: certificate.eventName,
+      eventDate: certificate.eventDate,
+      DateGenerated: certificate.createdAt,
+      CreatedBy: certificate.issuedBy?.fullName || 'Campus Ministry',
+      status: certificate.status
+    }));
+
+    res.json({
+      studentName: student.fullName,
+      studentId: student.studentId,
+      college: student.college || '',
+      department: student.department || '',
+      major: student.major || '',
+      yearStanding: student.yearStanding || String(student.batch || '').match(/-(\d)/)?.[1] || '',
+      departmentYearStanding: `${student.department || 'No Department'} - ${student.yearStanding || String(student.batch || '').match(/-(\d)/)?.[1] || 'No Year'}`,
+      certificatesTotal: certificates.length,
+      certificates
+    });
+  } catch (error) {
+    console.error('Student profile error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // 🔥 FIXED: Create Evaluation (Removes invalid _id from questions)
 router.post('/evaluations', [auth, adminOrFacultyAuth], async (req, res) => {
   try {
@@ -81,7 +422,7 @@ router.post('/evaluations', [auth, adminOrFacultyAuth], async (req, res) => {
     let assignedStudents = req.body.assignedStudents || [];
 
     if (!ensureFacultyBatchAccess(faculty, batch)) {
-      return res.status(403).json({ message: 'Faculty can only create evaluations for their assigned course/year scope' });
+      return res.status(403).json({ message: 'Formator can only create evaluations for their assigned course/year scope' });
     }
     
     // Auto-assign students based on batch if no specific students selected
@@ -96,7 +437,7 @@ router.post('/evaluations', [auth, adminOrFacultyAuth], async (req, res) => {
         _id: { $in: assignedStudents }
       }, faculty)).select('_id');
       if (scopedStudents.length !== assignedStudents.length) {
-        return res.status(403).json({ message: 'Faculty can only assign students in their assigned scope' });
+        return res.status(403).json({ message: 'Formator can only assign students in their assigned scope' });
       }
     }
 
@@ -222,7 +563,7 @@ router.get('/recollections/:id', [auth, adminOrFacultyAuth], async (req, res) =>
       const facultyYearLevel = String(faculty.batch || '').match(/-(\d)/)?.[1] || '';
       if ((faculty.department && recollection.department !== faculty.department) ||
         (facultyYearLevel && recollection.yearLevel !== facultyYearLevel)) {
-        return res.status(403).json({ message: 'Faculty can only view recollections in their assigned scope' });
+        return res.status(403).json({ message: 'Formator can only view recollections in their assigned scope' });
       }
     }
 
@@ -249,7 +590,7 @@ router.post('/recollections', [auth, adminOrFacultyAuth], async (req, res) => {
       const facultyYearLevel = String(faculty.batch || '').match(/-(\d)/)?.[1] || '';
       if ((faculty.department && req.body.department !== faculty.department) ||
         (facultyYearLevel && req.body.yearLevel !== facultyYearLevel)) {
-        return res.status(403).json({ message: 'Faculty can only create recollections in their assigned scope' });
+        return res.status(403).json({ message: 'Formator can only create recollections in their assigned scope' });
       }
     }
 
@@ -265,7 +606,22 @@ router.post('/recollections', [auth, adminOrFacultyAuth], async (req, res) => {
     });
 
     await recollection.save();
-    res.status(201).json(recollection);
+    let emailNotification = { matchedStudents: 0, sent: 0, previewed: 0, failed: 0 };
+    try {
+      emailNotification = await notifyStudentsForRecollection(recollection);
+    } catch (notificationError) {
+      console.error('Recollection email notification error:', notificationError);
+      emailNotification = {
+        ...emailNotification,
+        failed: 1,
+        error: 'Schedule was created, but email notifications failed.'
+      };
+    }
+
+    res.status(201).json({
+      ...recollection.toObject(),
+      emailNotification
+    });
   } catch (error) {
     console.error('Create recollection error:', error);
     res.status(500).json({ message: error.message });
@@ -308,6 +664,7 @@ router.post('/certificates', [auth, adminAuth], async (req, res) => {
       student: studentId,
       eventName,
       eventDate: new Date(eventDate),
+      qrData,
       qrCode,
       issuedBy: req.user.id,
       status: 'issued'
@@ -323,6 +680,56 @@ router.post('/certificates', [auth, adminAuth], async (req, res) => {
     res.status(201).json(populatedCert);
   } catch (error) {
     console.error('Generate certificate error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Verify certificate QR code
+router.post('/certificates/verify', [auth, adminOrFacultyAuth], async (req, res) => {
+  try {
+    const { code } = req.body;
+    const scannedCode = String(code || '').trim();
+
+    if (!scannedCode) {
+      return res.status(400).json({ message: 'QR code data is required' });
+    }
+
+    const query = {
+      $or: [
+        { qrData: scannedCode },
+        { qrCode: scannedCode }
+      ]
+    };
+
+    if (/^[0-9a-fA-F]{24}$/.test(scannedCode)) {
+      query.$or.push({ _id: scannedCode });
+    }
+
+    if (scannedCode.startsWith('CERT:')) {
+      const [, studentId, timestamp] = scannedCode.split(':');
+      if (timestamp) query.$or.push({ qrData: { $regex: `^CERT:${escapeRegex(studentId || '')}:${escapeRegex(timestamp)}:` } });
+    }
+
+    const certificate = await Certificate.findOne(query)
+      .populate('student', 'fullName studentId email batch department')
+      .populate('issuedBy', 'fullName email');
+
+    if (!certificate) {
+      return res.status(404).json({ valid: false, message: 'Certificate not found or QR code is invalid' });
+    }
+
+    if (certificate.status !== 'verified') {
+      certificate.status = 'verified';
+      await certificate.save();
+    }
+
+    res.json({
+      valid: true,
+      message: 'Certificate verified successfully',
+      certificate
+    });
+  } catch (error) {
+    console.error('Verify certificate error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -466,19 +873,19 @@ router.get('/students', [auth, adminOrFacultyAuth], async (req, res) => {
 
     if (batch) {
       if (!ensureFacultyBatchAccess(faculty, batch)) {
-        return res.status(403).json({ message: 'Faculty can only view students in their assigned scope' });
+        return res.status(403).json({ message: 'Formator can only view students in their assigned scope' });
       }
       query.batch = { $regex: `^${escapeRegex(batch)}` };
     } else if (yearLevel && !faculty?.batch) {
       const facultyYearLevel = String(faculty?.batch || '').match(/-(\d)/)?.[1] || '';
       if (facultyYearLevel && String(yearLevel) !== facultyYearLevel) {
-        return res.status(403).json({ message: 'Faculty can only view students in their assigned year level' });
+        return res.status(403).json({ message: 'Formator can only view students in their assigned year level' });
       }
       query.batch = { $regex: `-${yearLevel}` };
     }
 
     let students = await User.find(query)
-      .select('fullName studentId email batch department')
+      .select('fullName firstName lastName studentId email batch college department major yearStanding certificates')
       .sort({ fullName: 1 })
       .limit(200)
       .lean();
@@ -504,6 +911,10 @@ router.get('/students', [auth, adminOrFacultyAuth], async (req, res) => {
       const completion = completionByStudent.get(student._id.toString());
       return {
         ...student,
+        firstName: student.firstName || splitName(student.fullName).firstName,
+        lastName: student.lastName || splitName(student.fullName).lastName,
+        yearStanding: student.yearStanding || String(student.batch || '').match(/-(\d)/)?.[1] || '',
+        certificateCount: student.certificates?.length || 0,
         completedEvaluations: completion?.completedEvaluations || 0,
         latestSubmissionAt: completion?.latestSubmissionAt || null
       };
@@ -523,12 +934,173 @@ router.get('/students', [auth, adminOrFacultyAuth], async (req, res) => {
 // Get all users
 router.get('/users', [auth, adminAuth], async (req, res) => {
   try {
-    const users = await User.find()
-      .select('fullName email role batch createdAt')
+    const role = req.query.role ? normalizeRole(req.query.role) : null;
+    const query = role ? { role } : {};
+    const users = await User.find(query)
+      .select('fullName email role status batch department studentId createdAt')
       .sort({ createdAt: -1 });
     res.json(users);
   } catch (error) {
     console.error('Users error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/users', [auth, adminAuth], async (req, res) => {
+  try {
+    const { fullName, username, email, password, role, status, department, batch } = req.body;
+    if (!email || !password || !(fullName || username)) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+
+    const existing = await User.findOne({ email: String(email).toLowerCase() });
+    if (existing) return res.status(400).json({ message: 'Email already registered' });
+
+    const displayName = fullName || username;
+    const accountRole = normalizeRole(role);
+    const newUser = new User({
+      fullName: displayName,
+      email: String(email).toLowerCase(),
+      password,
+      role: accountRole,
+      status: ['active', 'inactive'].includes(status) ? status : 'active',
+      department: department || '',
+      batch: batch || '',
+      studentId: accountRole === 'student' ? req.body.studentId || `STU${Date.now()}` : req.body.studentId || `USR${Date.now()}`
+    });
+
+    await newUser.save();
+    res.status(201).json({
+      _id: newUser._id,
+      fullName: newUser.fullName,
+      email: newUser.email,
+      role: newUser.role,
+      status: newUser.status,
+      batch: newUser.batch,
+      department: newUser.department,
+      createdAt: newUser.createdAt
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/users/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    const { fullName, username, email, password, role, status, department, batch } = req.body;
+    const updates = {
+      ...(fullName || username ? { fullName: fullName || username } : {}),
+      ...(email ? { email: String(email).toLowerCase() } : {}),
+      ...(role ? { role: normalizeRole(role) } : {}),
+      ...(status && ['active', 'inactive'].includes(status) ? { status } : {}),
+      ...(department !== undefined ? { department } : {}),
+      ...(batch !== undefined ? { batch } : {})
+    };
+
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    Object.assign(user, updates);
+    if (password) user.password = password;
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      batch: user.batch,
+      department: user.department,
+      createdAt: user.createdAt
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/users/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ message: 'You cannot delete your own account' });
+    }
+
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/students', [auth, adminAuth], async (req, res) => {
+  try {
+    const { studentId, college, department, major, email, firstName, lastName, yearStanding } = req.body;
+    if (!studentId || !department || !email || !firstName || !lastName || !yearStanding) {
+      return res.status(400).json({ message: 'Student ID, name, email, department, and year standing are required' });
+    }
+
+    const existing = await User.findOne({ $or: [{ studentId }, { email: String(email).toLowerCase() }] });
+    if (existing) return res.status(400).json({ message: 'Student ID or email already exists' });
+
+    const student = new User({
+      studentId,
+      college: college || '',
+      department,
+      major: major || '',
+      email: String(email).toLowerCase(),
+      firstName,
+      lastName,
+      fullName: `${firstName} ${lastName}`.trim(),
+      yearStanding,
+      batch: `${department}-${yearStanding}`,
+      role: 'student',
+      password: 'password123'
+    });
+
+    await student.save();
+    res.status(201).json(student);
+  } catch (error) {
+    console.error('Create student error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/students/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    const { college, department, major, email, firstName, lastName, yearStanding } = req.body;
+    const student = await User.findById(req.params.id);
+    if (!student || student.role !== 'student') return res.status(404).json({ message: 'Student not found' });
+
+    const names = splitName(req.body.fullName || student.fullName);
+    student.college = college ?? student.college;
+    student.department = department ?? student.department;
+    student.major = major ?? student.major;
+    student.email = email ? String(email).toLowerCase() : student.email;
+    student.firstName = firstName || names.firstName;
+    student.lastName = lastName || names.lastName;
+    student.fullName = `${student.firstName} ${student.lastName}`.trim();
+    student.yearStanding = yearStanding ?? student.yearStanding;
+    if (student.department && student.yearStanding) student.batch = `${student.department}-${student.yearStanding}`;
+    await student.save();
+
+    res.json(student);
+  } catch (error) {
+    console.error('Update student error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/students/:id', [auth, adminAuth], async (req, res) => {
+  try {
+    const student = await User.findOneAndDelete({ _id: req.params.id, role: 'student' });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    res.json({ message: 'Student deleted successfully' });
+  } catch (error) {
+    console.error('Delete student error:', error);
     res.status(500).json({ message: error.message });
   }
 });

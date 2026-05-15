@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 const Recollection = require('./models/Recollection');
+const CmoEvent = require('./models/CmoEvent');
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/faculty', require('./routes/faculty'));
+app.use('/api/formator', require('./routes/faculty'));
 app.use('/api/student', require('./routes/student'));
 app.use('/api/evaluation', require('./routes/evaluation'));
 
@@ -143,11 +145,57 @@ const seedRecollections = async () => {
   }
 };
 
+const seedCmoEvents = async () => {
+  try {
+    const now = new Date();
+    const makeDate = (daysFromNow) => {
+      const date = new Date(now);
+      date.setDate(date.getDate() + daysFromNow);
+      date.setHours(9, 0, 0, 0);
+      return date;
+    };
+
+    const events = [
+      {
+        eventDate: makeDate(3),
+        department: 'Computer Studies',
+        description: 'First Year Recollection',
+        batch: '1',
+        yearLevel: '1',
+        venue: 'Xavier University Chapel',
+        inCharge: 'Campus Ministry Office'
+      },
+      {
+        eventDate: makeDate(10),
+        department: 'Engineering',
+        description: 'Formation Session',
+        batch: '2',
+        yearLevel: '2',
+        venue: 'AVR 1',
+        inCharge: 'Campus Ministry Office'
+      }
+    ];
+
+    for (const event of events) {
+      await CmoEvent.findOneAndUpdate(
+        { description: event.description, department: event.department },
+        event,
+        { upsert: true, new: true }
+      );
+    }
+
+    console.log('CMO events ready');
+  } catch (error) {
+    console.log('Could not seed CMO events:', error.message);
+  }
+};
+
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
     console.log('MongoDB connected');
     await seedUsers();
     await seedRecollections();
+    await seedCmoEvents();
   })
   .catch(err => console.log(err));
 

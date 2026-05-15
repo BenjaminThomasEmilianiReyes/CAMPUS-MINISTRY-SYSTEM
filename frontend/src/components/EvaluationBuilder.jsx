@@ -150,7 +150,7 @@ const EvaluationBuilder = () => {
           {/* Existing Template */}
           {user?.role === 'staff' && (
             <div className="p-5 rounded-2xl bg-yellow-100 text-yellow-900 font-medium">
-              Faculty access: you can create and post evaluations for your assigned scope only. Delete actions remain admin-only.
+              Formator access: you can create and post evaluations for your assigned scope only. Delete actions remain admin-only.
             </div>
           )}
 

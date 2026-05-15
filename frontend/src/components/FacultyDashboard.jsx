@@ -14,10 +14,10 @@ const FacultyDashboard = () => {
 
   const fetchDashboard = async () => {
     try {
-      const response = await api.get('/faculty/dashboard');
+      const response = await api.get('/formator/dashboard');
       setData(response.data);
     } catch (error) {
-      toast.error('Failed to load faculty dashboard');
+      toast.error('Failed to load formator dashboard');
     } finally {
       setLoading(false);
     }
@@ -26,7 +26,7 @@ const FacultyDashboard = () => {
   const recommendCertificate = async (studentId) => {
     setRecommending(studentId);
     try {
-      await api.post('/faculty/certificate-recommendations', { studentId });
+      await api.post('/formator/certificate-recommendations', { studentId });
       toast.success('Certificate recommendation sent to admin');
       fetchDashboard();
     } catch (error) {
@@ -56,7 +56,7 @@ const FacultyDashboard = () => {
   return (
     <div className="-m-6 min-h-screen bg-[#edf0f7] pb-10">
       <h1 className="mb-3 bg-[#D9D9D9] p-3 text-center text-4xl font-semibold text-[#3a53a5]">
-        FACULTY DASHBOARD
+        FORMATOR DASHBOARD
       </h1>
       <p className="mx-6 mb-6 text-center text-sm font-semibold uppercase tracking-wide text-gray-500 lg:mx-9">
         {data?.faculty?.department || 'Assigned department'}
@@ -137,7 +137,7 @@ const FacultyDashboard = () => {
                 </tbody>
               </table>
               {(!data?.students || data.students.length === 0) && (
-                <div className="py-10 text-center text-gray-500">No students assigned to this faculty scope.</div>
+                <div className="py-10 text-center text-gray-500">No students assigned to this formator scope.</div>
               )}
             </div>
           </section>
@@ -174,7 +174,7 @@ const FacultyDashboard = () => {
                 </div>
               ))}
               {(!data?.evaluations || data.evaluations.length === 0) && (
-                <p className="text-gray-500">No evaluations found for this faculty scope.</p>
+                <p className="text-gray-500">No evaluations found for this formator scope.</p>
               )}
             </div>
           </section>
@@ -190,7 +190,7 @@ const FacultyDashboard = () => {
                 </div>
               ))}
               {(!data?.recollections || data.recollections.length === 0) && (
-                <p className="text-gray-500">No upcoming recollections for this faculty scope.</p>
+                <p className="text-gray-500">No upcoming recollections for this formator scope.</p>
               )}
             </div>
           </section>

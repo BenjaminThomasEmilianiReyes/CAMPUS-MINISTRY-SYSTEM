@@ -21,7 +21,7 @@ const auth = (req, res, next) => {
 
 const facultyAuth = (req, res, next) => {
   if (req.user.role !== 'staff') {
-    return res.status(403).json({ message: 'Faculty access required' });
+    return res.status(403).json({ message: 'Formator access required' });
   }
   next();
 };
@@ -41,7 +41,7 @@ const buildStudentScope = (faculty) => {
 router.get('/dashboard', [auth, facultyAuth], async (req, res) => {
   try {
     const faculty = await User.findById(req.user.id).select('fullName email department batch');
-    if (!faculty) return res.status(404).json({ message: 'Faculty not found' });
+    if (!faculty) return res.status(404).json({ message: 'Formator not found' });
 
     const studentScope = buildStudentScope(faculty);
     const students = await User.find(studentScope)
@@ -131,7 +131,7 @@ router.get('/dashboard', [auth, facultyAuth], async (req, res) => {
       recommendations
     });
   } catch (error) {
-    console.error('Faculty dashboard error:', error);
+    console.error('Formator dashboard error:', error);
     res.status(500).json({ message: error.message });
   }
 });

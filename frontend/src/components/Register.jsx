@@ -127,7 +127,7 @@ const Register = () => {
                   <svg className="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m8-5.13a3 3 0 11-6 0 3 3 0 016 0zM9 9a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  Faculty
+                  Formator
                 </button>
               </div>
             </div>
@@ -166,7 +166,7 @@ const Register = () => {
 {formData.role === 'staff' && (
               <>
                 <div>
-                  <label htmlFor="email" className={labelClass}>Faculty Email</label>
+                  <label htmlFor="email" className={labelClass}>Formator Email</label>
                   <input
                     id="email"
                     name="email"
@@ -175,9 +175,9 @@ const Register = () => {
                     value={formData.email}
                     onChange={handleChange}
                     className={fieldClass}
-                    placeholder="e.g., faculty@xu.edu.ph"
+                    placeholder="e.g., formator@xu.edu.ph"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Faculty accounts can view assigned students only</p>
+                  <p className="text-xs text-gray-500 mt-1">Formator accounts can view assigned students only</p>
                 </div>
 
                 <div>

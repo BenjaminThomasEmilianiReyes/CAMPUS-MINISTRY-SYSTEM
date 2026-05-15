@@ -34,6 +34,63 @@ const createAuthResponse = (user) => {
   };
 };
 
+const accountEmailRules = {
+  admin: {
+    label: 'Admin',
+    domains: ['@xu.edu.ph'],
+    roles: ['admin']
+  },
+  staff: {
+    label: 'Formators',
+    domains: ['@xu.edu.ph'],
+    roles: ['staff']
+  },
+  student: {
+    label: 'Students',
+    domains: ['@my.xu.edu.ph'],
+    roles: ['student']
+  }
+};
+
+const allXavierDomains = Object.values(accountEmailRules).flatMap((rule) => rule.domains);
+
+const validateXavierEmail = (email, accountType) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const rule = accountEmailRules[accountType];
+  const allowedDomains = rule ? rule.domains : allXavierDomains;
+  const isAllowed = allowedDomains.some((domain) => normalizedEmail.endsWith(domain));
+
+  if (!isAllowed) {
+    return {
+      valid: false,
+      message: rule
+        ? `${rule.label} must use ${allowedDomains.join(' or ')} email.`
+        : 'Only Xavier University email accounts are allowed.'
+    };
+  }
+
+  return { valid: true, email: normalizedEmail };
+};
+
+const validateAccountRole = (user, accountType) => {
+  if (user.status === 'inactive') {
+    return {
+      valid: false,
+      message: 'This account is inactive. Please contact the administrator.'
+    };
+  }
+
+  const rule = accountEmailRules[accountType];
+  if (!rule || !rule.roles || rule.roles.includes(user.role)) {
+    return { valid: true };
+  }
+
+  return {
+    valid: false,
+    message: `Please use the ${rule.label} login option for ${rule.label.toLowerCase()} accounts only.`
+  };
+};
+
 // Auth route health check
 router.get('/', (req, res) => {
   res.json({
@@ -112,12 +169,12 @@ router.post('/autoseed', async (req, res) => {
 
     const studentHash = await bcrypt.hash('password123', 12);
     await User.findOneAndUpdate(
-      { email: 'faculty@xu.edu.ph' },
+      { email: 'formator@xu.edu.ph' },
       {
-        email: 'faculty@xu.edu.ph',
+        email: 'formator@xu.edu.ph',
         password: studentHash,
         role: 'staff',
-        fullName: 'Faculty Adviser',
+        fullName: 'Formator Adviser',
         studentId: 'FAC001',
         department: 'Computer Studies',
         batch: 'BSIT-1'
@@ -178,25 +235,29 @@ router.post('/autoseed', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, accountType } = req.body;
+    const emailValidation = validateXavierEmail(email, accountType);
+    if (!emailValidation.valid) {
+      return res.status(400).json({ message: emailValidation.message });
+    }
     
     // Auto-create test users if they don't exist (for demo purposes)
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email: emailValidation.email });
     
     // If user doesn't exist, check if it's a test account.
     if (!user) {
       // Check if it's a test account and create it with the documented password.
-      if (email === '20230028369@my.xu.edu.ph' || email === 'dfabela@xu.edu.ph' || email === 'faculty@xu.edu.ph') {
-        const isAdminTestUser = email === 'dfabela@xu.edu.ph';
-        const isFacultyTestUser = email === 'faculty@xu.edu.ph';
+      if (emailValidation.email === '20230028369@my.xu.edu.ph' || emailValidation.email === 'dfabela@xu.edu.ph' || emailValidation.email === 'formator@xu.edu.ph' || emailValidation.email === 'faculty@xu.edu.ph') {
+        const isAdminTestUser = emailValidation.email === 'dfabela@xu.edu.ph';
+        const isFacultyTestUser = emailValidation.email === 'formator@xu.edu.ph' || emailValidation.email === 'faculty@xu.edu.ph';
         const hashedPassword = await bcrypt.hash(isAdminTestUser ? 'admin123' : 'password123', 12);
         user = await User.findOneAndUpdate(
-          { email },
+          { email: emailValidation.email },
           {
-            email,
+            email: emailValidation.email,
             password: hashedPassword,
             role: isAdminTestUser ? 'admin' : isFacultyTestUser ? 'staff' : 'student',
-            fullName: isAdminTestUser ? 'Dean Fabela' : isFacultyTestUser ? 'Faculty Adviser' : 'John Doe',
+            fullName: isAdminTestUser ? 'Dean Fabela' : isFacultyTestUser ? 'Formator Adviser' : 'John Doe',
             studentId: isAdminTestUser ? 'ADMIN001' : isFacultyTestUser ? 'FAC001' : '20230028369',
             department: isAdminTestUser ? '' : 'Computer Studies',
             batch: isAdminTestUser ? '' : isFacultyTestUser ? 'BSIT-1' : 'BSIT-1A'
@@ -214,15 +275,80 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    const roleValidation = validateAccountRole(user, accountType);
+    if (!roleValidation.valid) {
+      return res.status(403).json({ message: roleValidation.message });
+    }
+
     res.json(createAuthResponse(user));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user) {
+      return res.json({ message: 'If this email is registered, a reset code has been prepared.' });
+    }
+
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    res.json({
+      message: 'Password reset code generated. It expires in 15 minutes.',
+      resetToken
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Reset code and new password are required' });
+    }
+
+    if (String(password).length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset code' });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successful. You can now sign in.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.post('/google', async (req, res) => {
   try {
-    const { credential } = req.body;
+    const { credential, accountType } = req.body;
 
     if (!process.env.GOOGLE_CLIENT_ID) {
       return res.status(500).json({ message: 'Google login is not configured on the server' });
@@ -242,7 +368,12 @@ router.post('/google', async (req, res) => {
       return res.status(401).json({ message: 'Google account email is not verified' });
     }
 
-    const email = payload.email.toLowerCase();
+    const emailValidation = validateXavierEmail(payload.email, accountType);
+    if (!emailValidation.valid) {
+      return res.status(400).json({ message: emailValidation.message });
+    }
+
+    const email = emailValidation.email;
     const studentId = email.endsWith('@my.xu.edu.ph')
       ? email.split('@')[0]
       : `GOOGLE-${payload.sub}`;
@@ -265,6 +396,11 @@ router.post('/google', async (req, res) => {
         department: '',
         batch: ''
       });
+    }
+
+    const roleValidation = validateAccountRole(user, accountType);
+    if (!roleValidation.valid) {
+      return res.status(403).json({ message: roleValidation.message });
     }
 
     res.json(createAuthResponse(user));
@@ -293,12 +429,12 @@ router.post('/seed', async (req, res) => {
 
     const studentHash = await bcrypt.hash('password123', 12);
     const faculty = await User.findOneAndUpdate(
-      { email: 'faculty@xu.edu.ph' },
+      { email: 'formator@xu.edu.ph' },
       {
-        email: 'faculty@xu.edu.ph',
+        email: 'formator@xu.edu.ph',
         password: studentHash,
         role: 'staff',
-        fullName: 'Faculty Adviser',
+        fullName: 'Formator Adviser',
         studentId: 'FAC001',
         department: 'Computer Studies',
         batch: 'BSIT-1'
@@ -322,7 +458,7 @@ router.post('/seed', async (req, res) => {
 
     console.log('✅ Test users created!');
     console.log(`👨‍💼 Admin: dfabela@xu.edu.ph / admin123`);
-    console.log(`👩‍🏫 Faculty: faculty@xu.edu.ph / password123`);
+    console.log(`👩‍🏫 Formator: formator@xu.edu.ph / password123`);
     console.log(`👨‍🎓 Student: 20230028369@my.xu.edu.ph / password123`);
 
     res.json({ 

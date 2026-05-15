@@ -78,7 +78,13 @@ const RecollectionScheduleManager = () => {
         facilitator: '',
         slots: 40
       });
-      toast.success('Recollection schedule created');
+      const notification = response.data?.emailNotification;
+      if (notification) {
+        const notified = notification.sent + notification.previewed;
+        toast.success(`Recollection schedule created. ${notified}/${notification.matchedStudents} student emails prepared.`);
+      } else {
+        toast.success('Recollection schedule created');
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create recollection schedule');
     } finally {
@@ -119,7 +125,7 @@ const RecollectionScheduleManager = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {user?.role === 'staff' && (
             <div className="rounded-2xl bg-yellow-100 p-5 text-yellow-900 font-medium">
-              Faculty access: you can create recollection schedules for your assigned department/year only. Delete actions remain admin-only.
+              Formator access: you can create recollection schedules for your assigned department/year only. Delete actions remain admin-only.
             </div>
           )}
 

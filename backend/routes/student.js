@@ -30,6 +30,7 @@ const departments = [
 ];
 
 const courses = ['BSIT', 'BSCS', 'BSIS', 'ABCom'];
+const RECENT_SCHEDULE_WINDOW_HOURS = 168;
 
 const getCourseFromBatch = (batch = '') => {
   const match = String(batch).match(/^([A-Za-z]+)-/);
@@ -106,6 +107,19 @@ router.get('/dashboard', auth, async (req, res) => {
       };
     });
 
+    const recentScheduleThreshold = new Date(Date.now() - RECENT_SCHEDULE_WINDOW_HOURS * 60 * 60 * 1000);
+    const newScheduleNotifications = recollectionSchedules
+      .filter((schedule) => new Date(schedule.createdAt) >= recentScheduleThreshold)
+      .map((schedule) => ({
+        _id: schedule._id,
+        title: schedule.title,
+        date: schedule.date,
+        venue: schedule.venue,
+        description: schedule.description || '',
+        message: `New recollection available for ${schedule.department} Year ${schedule.yearLevel}.`,
+        isRegistered: schedule.isRegistered
+      }));
+
     res.json({
       profile: buildStudentProfile(user),
       announcements: [
@@ -116,6 +130,7 @@ router.get('/dashboard', auth, async (req, res) => {
       pendingEvaluations: evaluations,
       availableEvaluations: availableEvaluations,
       recollectionSchedules,
+      newScheduleNotifications,
       certificates: user.certificates || []
     });
   } catch (error) {

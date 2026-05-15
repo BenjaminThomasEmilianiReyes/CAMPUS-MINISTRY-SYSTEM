@@ -3,16 +3,15 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import EvaluationCard from './EvaluationCard';
 
 const StudentDashboard = () => {
   const { user } = useContext(AuthContext);
   const [dashboardData, setDashboardData] = useState({
     profile: null,
     announcements: [],
-    pendingEvaluations: [],
     availableEvaluations: [],
     recollectionSchedules: [],
+    newScheduleNotifications: [],
     certificates: []
   });
   const [loading, setLoading] = useState(true);
@@ -79,8 +78,6 @@ const StudentDashboard = () => {
 
   const statCards = [
     ['Recollections', dashboardData.recollectionSchedules?.length || 0],
-    ['Pending Evaluations', dashboardData.pendingEvaluations?.length || 0],
-    ['Available Evaluations', dashboardData.availableEvaluations?.length || 0],
     ['Certificates', dashboardData.certificates?.length || 0]
   ];
 
@@ -182,31 +179,45 @@ const StudentDashboard = () => {
               )}
             </section>
 
-            <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+            <section className="rounded-2xl bg-white p-6 shadow-lg">
+              <h2 className="mb-4 text-xl font-semibold text-gray-900">Announcements</h2>
+              <div className="space-y-4">
+                {dashboardData.announcements.map((announcement, index) => (
+                  <div key={index} className="border-l-4 border-[#3a53a5] bg-[#edf0f7] p-4">
+                    <p className="text-sm text-gray-800">{announcement}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {dashboardData.newScheduleNotifications && dashboardData.newScheduleNotifications.length > 0 && (
               <section className="rounded-2xl bg-white p-6 shadow-lg">
-                <h2 className="mb-4 text-xl font-semibold text-gray-900">Announcements</h2>
-                <div className="space-y-4">
-                  {dashboardData.announcements.map((announcement, index) => (
-                    <div key={index} className="border-l-4 border-[#3a53a5] bg-[#edf0f7] p-4">
-                      <p className="text-sm text-gray-800">{announcement}</p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">New Recollection Notifications</h2>
+                    <p className="text-sm text-gray-500">You have new recollection schedules matching your department and year level.</p>
+                  </div>
+                </div>
+                <div className="mt-6 space-y-4">
+                  {dashboardData.newScheduleNotifications.map((notification) => (
+                    <div key={notification._id} className="rounded-2xl border-l-4 border-[#3a53a5] bg-[#edf0f7] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{notification.title}</h3>
+                          <p className="text-sm text-gray-600">{notification.message}</p>
+                        </div>
+                        <span className="rounded-full bg-[#3a53a5] px-3 py-1 text-xs font-semibold text-white">New</span>
+                      </div>
+                      <p className="mt-2 text-sm text-gray-700">{notification.description}</p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <p className="text-sm text-gray-500">Venue: {notification.venue}</p>
+                        <p className="text-sm text-gray-500">Date: {new Date(notification.date).toLocaleString()}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </section>
-
-              <section className="rounded-2xl bg-white p-6 shadow-lg">
-                <h2 className="mb-4 text-xl font-semibold text-gray-900">Pending Evaluations</h2>
-                {dashboardData.pendingEvaluations.length === 0 ? (
-                  <div className="py-10 text-center text-gray-500">No pending evaluations.</div>
-                ) : (
-                  <div className="max-h-96 space-y-4 overflow-y-auto">
-                    {dashboardData.pendingEvaluations.map((evaluation) => (
-                      <EvaluationCard key={evaluation._id} evaluation={evaluation} />
-                    ))}
-                  </div>
-                )}
-              </section>
-            </div>
+            )}
 
             {dashboardData.availableEvaluations && dashboardData.availableEvaluations.length > 0 && (
               <section className="rounded-2xl bg-white p-6 shadow-lg">

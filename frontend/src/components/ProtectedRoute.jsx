@@ -47,6 +47,6 @@ const ProtectedRoute = ({ children, role }) => {
 export default ProtectedRoute;
   const getHomePath = (userRole) => {
     if (userRole === 'admin') return '/admin/dashboard';
-    if (userRole === 'staff') return '/faculty/dashboard';
+    if (userRole === 'staff') return '/formator/dashboard';
     return '/student/dashboard';
   };
